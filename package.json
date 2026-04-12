@@ -1,0 +1,17 @@
+{
+  "name": "sound-station",
+  "version": "1.0.0",
+  "description": "A modern music player powered by a Doubly Linked List playlist engine",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vite": "^5.2.10"
+  },
+  "dependencies": {}
+}

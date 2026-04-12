@@ -14,12 +14,16 @@ import { YouTubeMusicImporter } from './services/YouTubeMusicImporter.js';
 import { LocalFileImporter } from './services/LocalFileImporter.js';
 
 import { DashboardShell } from './components/layout/DashboardShell.js';
+import { NavigationController } from './components/layout/NavigationController.js';
 import { Toast } from './components/common/Toast.js';
+import { ModalComponent } from './components/common/ModalComponent.js';
 import { PlaylistView } from './features/playlist/PlaylistView.js';
 import { PlayerBar } from './features/player/PlayerBar.js';
 import { PlaylistsView } from './features/library/PlaylistsView.js';
 import { LocalLibraryImportView } from './features/library/LocalLibraryImportView.js';
 import { PlaylistSidebarView } from './features/library/PlaylistSidebarView.js';
+import { PlaylistDetailsView } from './features/library/PlaylistDetailsView.js';
+import { PlaylistService } from './services/PlaylistService.js';
 
 // ═════════════════════════════════════════════════════════════════
 //  Demo seed data
@@ -115,7 +119,10 @@ const DEMO_SONGS: ISong[] = [
 async function bootstrap(): Promise<void> {
   const player = Player.getInstance();
   const shell = new DashboardShell();
+  const navigation = new NavigationController();
   const toast = new Toast(document.getElementById('toast-container') as HTMLElement);
+  const confirmModal = new ModalComponent();
+  const playlistService = new PlaylistService();
   const localImporter = new LocalFileImporter();
 
   const importers = {
@@ -124,17 +131,48 @@ async function bootstrap(): Promise<void> {
     youtube: new YouTubeMusicImporter(),
   };
 
-  player.addMany(DEMO_SONGS);
+  playlistService.seedIfEmpty(DEMO_SONGS);
+  player.clearPlaylist();
+  player.addMany(playlistService.getAllQueueSongs());
 
   new PlaylistView(shell.recentlyPlayedTrack, player);
-  new PlaylistsView(shell.playlistsGrid, player);
   new PlayerBar(player);
+  const playlistDetailsView = new PlaylistDetailsView(player, playlistService, toast);
+
+  const openPlaylist = (playlistId: string): void => {
+    const playlist = playlistService.getPlaylistById(playlistId);
+    if (!playlist) return;
+    navigation.showPlaylistDetail();
+    playlistDetailsView.showPlaylist(playlist);
+  };
+
+  const playlistsView = new PlaylistsView(
+    shell.playlistsGrid,
+    playlistService,
+    (playlist) => openPlaylist(playlist.id),
+    confirmModal,
+    toast,
+    () => {
+      playlistSidebarView.render();
+      playlistDetailsView.refreshCurrentPlaylist();
+      player.clearPlaylist();
+      player.addMany(playlistService.getAllQueueSongs());
+    },
+  );
 
   const playlistSidebarView = new PlaylistSidebarView(
-    player,
+    playlistService,
     localImporter,
     importers,
     toast,
+    confirmModal,
+    (playlist) => openPlaylist(playlist.id),
+    () => {
+      playlistsView.render();
+      playlistDetailsView.refreshCurrentPlaylist();
+      player.clearPlaylist();
+      player.addMany(playlistService.getAllQueueSongs());
+    },
   );
 
   new LocalLibraryImportView(
@@ -142,12 +180,14 @@ async function bootstrap(): Promise<void> {
     shell.fileInput,
     player,
     localImporter,
+    playlistService,
     toast,
   );
 
   shell.localImportButton.addEventListener('click', () => playlistSidebarView.openModal('local'));
   shell.glossyImportButton.addEventListener('click', () => shell.fileInput.click());
   shell.serviceImportButton.addEventListener('click', () => playlistSidebarView.openModal('import'));
+  shell.backDashboardButton.addEventListener('click', () => navigation.showDashboard());
 
   if (player.currentSong) {
     await player.play(player.currentSong.id);

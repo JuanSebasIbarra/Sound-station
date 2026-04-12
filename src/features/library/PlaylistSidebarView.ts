@@ -1,24 +1,14 @@
 import type { IPlaylistImporter } from '../../interfaces/IPlaylistImporter.js';
-import type { ISong } from '../../interfaces/ISong.js';
-import { Player } from '../../core/Player.js';
+import type { IUserPlaylist, UserPlaylistSource } from '../../interfaces/IUserPlaylist.js';
 import { LocalFileImporter } from '../../services/LocalFileImporter.js';
+import { PlaylistService } from '../../services/PlaylistService.js';
 import { Toast } from '../../components/common/Toast.js';
-import { generateGradientArt, generateId } from '../../utils/helpers.js';
+import { ModalComponent } from '../../components/common/ModalComponent.js';
+import { generateGradientArt } from '../../utils/helpers.js';
 
 type ServiceKey = 'spotify' | 'apple' | 'youtube';
 
-type PlaylistSource = 'local' | 'spotify' | 'apple_music' | 'youtube_music';
-
-interface IUserPlaylist {
-  id: string;
-  name: string;
-  source: PlaylistSource;
-  coverArt: string;
-  songIds: string[];
-  createdAt: number;
-}
-
-const SOURCE_LABEL: Record<PlaylistSource, string> = {
+const SOURCE_LABEL: Record<UserPlaylistSource, string> = {
   local: '💾 Local Storage',
   spotify: '🟢 From Spotify',
   apple_music: ' From Apple Music',
@@ -28,14 +18,9 @@ const SOURCE_LABEL: Record<PlaylistSource, string> = {
 /**
  * PlaylistSidebarView
  *
- * Manages user-created/imported playlists shown in the left sidebar.
- * Includes the create-playlist modal flow:
- *  1) choose local or import
- *  2) local => name + cover image + files
- *  3) import => provider + playlist id + api key
+ * Sidebar controller for playlist cards (open/delete/create/import).
  */
 export class PlaylistSidebarView {
-  private playlists: IUserPlaylist[] = [];
   private selectedImportService: ServiceKey = 'spotify';
   private localCoverDataUrl = '';
 
@@ -67,12 +52,14 @@ export class PlaylistSidebarView {
   private readonly choiceImportBtn = document.getElementById('btn-choice-import') as HTMLButtonElement;
 
   constructor(
-    private readonly player: Player,
+    private readonly playlistService: PlaylistService,
     private readonly localImporter: LocalFileImporter,
     private readonly importers: Record<ServiceKey, IPlaylistImporter>,
     private readonly toast: Toast,
+    private readonly modal: ModalComponent,
+    private readonly onPlaylistSelected: (playlist: IUserPlaylist) => void,
+    private readonly onPlaylistsChanged?: () => void,
   ) {
-    this.loadFromStorage();
     this.bindEvents();
     this.render();
   }
@@ -132,8 +119,7 @@ export class PlaylistSidebarView {
         return;
       }
 
-      this.player.addMany(songs);
-      this.createPlaylistRecord({
+      const playlist = this.playlistService.createPlaylist({
         name,
         source: 'local',
         coverArt: this.localCoverDataUrl || songs[0].albumArt || generateGradientArt(name),
@@ -141,9 +127,10 @@ export class PlaylistSidebarView {
       });
 
       this.toast.show(`Playlist "${name}" created with ${songs.length} songs.`, 'success');
-      if (!this.player.isPlaying && songs[0]) await this.player.play(songs[0].id);
-
+      this.render();
+      this.onPlaylistsChanged?.();
       this.closeModal();
+      this.onPlaylistSelected(playlist);
     });
 
     this.importTabs.forEach((tab) => {
@@ -176,19 +163,18 @@ export class PlaylistSidebarView {
           return;
         }
 
-        this.player.addMany(songs);
-
-        const source = this.mapServiceToSource(this.selectedImportService);
-        this.createPlaylistRecord({
+        const playlist = this.playlistService.createPlaylist({
           name,
-          source,
+          source: this.mapServiceToSource(this.selectedImportService),
           coverArt: songs[0].albumArt || generateGradientArt(name),
           songs,
         });
 
         this.toast.show(`Playlist "${name}" imported successfully.`, 'success');
-        if (!this.player.isPlaying && songs[0]) await this.player.play(songs[0].id);
+        this.render();
+        this.onPlaylistsChanged?.();
         this.closeModal();
+        this.onPlaylistSelected(playlist);
       } catch (error) {
         console.error('[PlaylistSidebarView] Import error:', error);
         this.toast.show('Could not import playlist from service.', 'error');
@@ -199,10 +185,11 @@ export class PlaylistSidebarView {
     });
   }
 
-  private render(): void {
+  render(): void {
+    const playlists = this.playlistService.getPlaylists();
     this.listEl.innerHTML = '';
 
-    if (this.playlists.length === 0) {
+    if (playlists.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'playlist-sidebar__subtitle';
       empty.textContent = 'No playlists yet. Use + Create.';
@@ -210,48 +197,46 @@ export class PlaylistSidebarView {
       return;
     }
 
-    this.playlists
-      .slice()
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .forEach((playlist) => {
-        const item = document.createElement('article');
-        item.className = 'sidebar-playlist-item';
-        item.innerHTML = `
-          <img src="${playlist.coverArt}" alt="${playlist.name} cover" />
-          <div>
-            <strong>${playlist.name}</strong>
-            <small>${SOURCE_LABEL[playlist.source]} · ${playlist.songIds.length} songs</small>
-          </div>
-        `;
+    playlists.forEach((playlist) => {
+      const item = document.createElement('article');
+      item.className = 'sidebar-playlist-item';
+      item.innerHTML = `
+        <img src="${playlist.coverArt}" alt="${playlist.name} cover" />
+        <div>
+          <strong>${playlist.name}</strong>
+          <small>${SOURCE_LABEL[playlist.source]} · ${playlist.songIds.length} songs</small>
+        </div>
+      `;
 
-        item.addEventListener('click', () => {
-          const firstSongId = playlist.songIds[0];
-          if (firstSongId) void this.player.play(firstSongId);
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'sidebar-playlist-delete';
+      deleteButton.title = 'Delete playlist';
+      deleteButton.textContent = '✕';
+
+      deleteButton.addEventListener('click', async (event) => {
+        event.stopPropagation();
+        const ok = await this.modal.confirm({
+          title: 'Delete Playlist',
+          message: `Delete "${playlist.name}" permanently?`,
+          confirmText: 'Delete',
+          cancelText: 'Keep',
         });
 
-        this.listEl.appendChild(item);
+        if (!ok) return;
+        this.playlistService.deletePlaylist(playlist.id);
+        this.toast.show(`Playlist "${playlist.name}" deleted.`, 'success');
+        this.render();
+        this.onPlaylistsChanged?.();
       });
-  }
 
-  private createPlaylistRecord(input: {
-    name: string;
-    source: PlaylistSource;
-    coverArt: string;
-    songs: ISong[];
-  }): void {
-    const songIds = input.songs.map((song) => song.id);
-    const playlist: IUserPlaylist = {
-      id: generateId(),
-      name: input.name,
-      source: input.source,
-      coverArt: input.coverArt,
-      songIds,
-      createdAt: Date.now(),
-    };
+      item.appendChild(deleteButton);
 
-    this.playlists.push(playlist);
-    this.saveToStorage();
-    this.render();
+      item.addEventListener('click', () => {
+        this.onPlaylistSelected(playlist);
+      });
+
+      this.listEl.appendChild(item);
+    });
   }
 
   private showChoiceStep(): void {
@@ -297,25 +282,9 @@ export class PlaylistSidebarView {
     });
   }
 
-  private mapServiceToSource(service: ServiceKey): PlaylistSource {
+  private mapServiceToSource(service: ServiceKey): UserPlaylistSource {
     if (service === 'spotify') return 'spotify';
     if (service === 'apple') return 'apple_music';
     return 'youtube_music';
-  }
-
-  private saveToStorage(): void {
-    localStorage.setItem('sound-station.playlists', JSON.stringify(this.playlists));
-  }
-
-  private loadFromStorage(): void {
-    const raw = localStorage.getItem('sound-station.playlists');
-    if (!raw) return;
-
-    try {
-      const parsed = JSON.parse(raw) as IUserPlaylist[];
-      this.playlists = Array.isArray(parsed) ? parsed : [];
-    } catch {
-      this.playlists = [];
-    }
   }
 }

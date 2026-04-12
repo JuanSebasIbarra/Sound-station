@@ -24,10 +24,16 @@ export class PlayerBar {
   private readonly volumeBar = document.getElementById('volume-bar') as HTMLElement;
   private readonly volumeFill = document.getElementById('volume-fill') as HTMLElement;
 
+  private readonly focusOverlay = document.getElementById('song-focus-overlay') as HTMLElement;
+  private readonly focusCover = document.getElementById('song-focus-cover') as HTMLImageElement;
+  private readonly focusTitle = document.getElementById('song-focus-title') as HTMLElement;
+  private readonly focusLyrics = document.getElementById('song-focus-lyrics') as HTMLElement;
+
   constructor(private readonly player: Player) {
     this.bindControls();
     this.bindProgress();
     this.bindVolume();
+    this.bindFocusOverlay();
     this.bindPlayerEvents();
     this.syncMeta();
   }
@@ -119,6 +125,25 @@ export class PlayerBar {
     this.player.events.on('next', () => this.syncMeta());
     this.player.events.on('previous', () => this.syncMeta());
     this.player.events.on('playlist-change', () => this.syncMeta());
+    this.player.events.on('current-song-update', () => this.syncMeta());
+  }
+
+  private bindFocusOverlay(): void {
+    this.art.addEventListener('click', () => {
+      const current = this.player.currentSong;
+      if (!current) return;
+
+      this.focusCover.src = current.albumArt;
+      this.focusTitle.textContent = `${current.title} · Lyrics`;
+      this.focusLyrics.textContent = current.lyrics?.trim() || 'No lyrics added for this song.';
+      this.focusOverlay.classList.remove('hidden');
+    });
+
+    this.focusOverlay.addEventListener('click', (event) => {
+      if (event.target === this.focusOverlay) {
+        this.focusOverlay.classList.add('hidden');
+      }
+    });
   }
 
   private syncMeta(): void {

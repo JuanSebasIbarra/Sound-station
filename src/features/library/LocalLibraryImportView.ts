@@ -1,6 +1,7 @@
 import { LocalFileImporter } from '../../services/LocalFileImporter.js';
 import { Player } from '../../core/Player.js';
 import { Toast } from '../../components/common/Toast.js';
+import { PlaylistService } from '../../services/PlaylistService.js';
 
 /**
  * LocalLibraryImportView
@@ -13,6 +14,7 @@ export class LocalLibraryImportView {
     private readonly fileInput: HTMLInputElement,
     private readonly player: Player,
     private readonly importer: LocalFileImporter,
+    private readonly playlistService: PlaylistService,
     private readonly toast: Toast,
   ) {
     this.bindEvents();
@@ -54,6 +56,7 @@ export class LocalLibraryImportView {
     }
 
     this.player.addMany(songs);
+    this.playlistService.addSongsToQueue(songs);
     this.toast.show(`Imported ${songs.length} local songs.`, 'success');
 
     if (!this.player.isPlaying && songs[0]) {

@@ -41,11 +41,18 @@
 }
 
 .playlist-tile {
+  position: relative;
   border: 1px solid #a7b0bf;
   border-radius: 12px;
   padding: 12px;
   background: linear-gradient(to bottom, #f5f8fd, #d8dfeb);
   box-shadow: inset 0 1px 0 #fff;
+}
+
+.playlist-tile .sidebar-playlist-delete {
+  position: absolute;
+  right: 10px;
+  top: 10px;
 }
 
 .playlist-tile h3 {
@@ -86,3 +93,105 @@
 
 .carousel-track.slide-left { animation: slide-left 220ms ease; }
 .carousel-track.slide-right { animation: slide-right 220ms ease; }
+
+.playlist-details__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.playlist-details__header h2 {
+  margin: 0;
+}
+
+.playlist-details__header p {
+  margin: 4px 0 0;
+  color: #5b6575;
+  font-size: 0.82rem;
+}
+
+.playlist-details__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.playlist-details__table-wrap {
+  border: 1px solid #a1adbf;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.playlist-details__table {
+  width: 100%;
+  border-collapse: collapse;
+  background: linear-gradient(to bottom, #101522, #06080f);
+  color: #e8edf8;
+}
+
+.playlist-details__table th,
+.playlist-details__table td {
+  text-align: left;
+  padding: 11px 12px;
+  border-bottom: 1px solid rgba(191, 206, 236, 0.15);
+  font-size: 0.88rem;
+}
+
+.playlist-details__table th {
+  color: #b2c1dd;
+  font-weight: 600;
+  background: rgba(20, 30, 48, 0.95);
+}
+
+.playlist-details__table tbody tr {
+  cursor: pointer;
+}
+
+.playlist-details__table tbody tr:hover {
+  background: rgba(112, 158, 237, 0.18);
+}
+
+.playlist-details__table tbody tr.active {
+  background: rgba(92, 149, 242, 0.28);
+}
+
+.source-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(215, 228, 255, 0.35);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.source-tag--local { background: rgba(130, 169, 255, 0.25); }
+.source-tag--spotify { background: rgba(74, 214, 130, 0.22); }
+.source-tag--apple_music { background: rgba(248, 184, 203, 0.22); }
+.source-tag--youtube_music { background: rgba(255, 121, 121, 0.22); }
+
+.song-context-menu {
+  position: fixed;
+  z-index: 120;
+  min-width: 150px;
+  border: 1px solid #7888a4;
+  border-radius: 10px;
+  background: linear-gradient(to bottom, #f7fbff, #cfd9e8);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+  padding: 6px;
+}
+
+.song-context-menu__item {
+  width: 100%;
+  border: 1px solid #8da0bd;
+  border-radius: 7px;
+  background: linear-gradient(to bottom, #ffffff, #d9e2ef);
+  padding: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.song-context-menu__item:hover {
+  background: linear-gradient(to bottom, #b6d5ff, #86b3eb);
+}

@@ -42,4 +42,7 @@ export interface ISong {
 
   /** Whether the user has "liked" this song */
   liked?: boolean;
+
+  /** Optional plain text lyrics authored/imported by user */
+  lyrics?: string;
 }

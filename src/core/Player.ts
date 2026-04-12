@@ -112,6 +112,22 @@ export class Player {
     this.events.emit('playlist-change', undefined);
   }
 
+  getSongById(songId: string): ISong | null {
+    return this._playlist.toArray().find((song) => song.id === songId) ?? null;
+  }
+
+  updateSongMetadata(songId: string, updates: Partial<ISong>): void {
+    const song = this.getSongById(songId);
+    if (!song) return;
+
+    Object.assign(song, updates);
+    this.events.emit('playlist-change', undefined);
+
+    if (this.currentSong?.id === songId) {
+      this.events.emit('current-song-update', { songId });
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────
   //  Playback controls
   // ─────────────────────────────────────────────────────────────

@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-2illKz4b.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DXU4gUAw.css">
+    <script type="module" crossorigin src="/assets/index-iZ56py1N.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DQlMfzEP.css">
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -24,44 +24,79 @@
         </div>
       </header>
 
-      <main class="dashboard-main dashboard-layout">
-        <aside class="playlist-sidebar panel">
-          <div class="playlist-sidebar__header">
-            <h2>Your Playlists</h2>
-            <button id="btn-create-playlist" class="glossy-btn glossy-btn--small">+ Create</button>
+      <main class="dashboard-main">
+        <section id="dashboard-view" class="dashboard-layout">
+          <aside class="playlist-sidebar panel">
+            <div class="playlist-sidebar__header">
+              <h2>Your Playlists</h2>
+              <button id="btn-create-playlist" class="glossy-btn glossy-btn--small">+ Create</button>
+            </div>
+            <p class="playlist-sidebar__subtitle">Created or imported by you</p>
+            <div id="sidebar-playlists" class="sidebar-playlists"></div>
+          </aside>
+
+          <div class="dashboard-content">
+            <section class="panel panel--hero">
+              <div class="section-heading">
+                <h2>Recently Played</h2>
+                <p>Swipe left/right or drag cards to reorder the Doubly Linked List.</p>
+              </div>
+              <div id="recently-played-track" class="carousel-track" aria-live="polite"></div>
+            </section>
+
+            <section class="panel">
+              <div class="section-heading">
+                <h2>Playlists</h2>
+                <p>Local and imported sources grouped by provider.</p>
+              </div>
+              <div id="playlists-grid" class="playlists-grid"></div>
+            </section>
+
+            <section class="panel panel--import">
+              <div class="section-heading">
+                <h2>Local Library Import</h2>
+                <p>Bulk-import hundreds of songs from disk.</p>
+              </div>
+              <div class="import-zone" id="import-zone">
+                <button id="btn-import-glossy" class="glossy-btn glossy-btn--hero">Import</button>
+                <p>Drop audio files here or use the button.</p>
+              </div>
+            </section>
           </div>
-          <p class="playlist-sidebar__subtitle">Created or imported by you</p>
-          <div id="sidebar-playlists" class="sidebar-playlists"></div>
-        </aside>
+        </section>
 
-        <div class="dashboard-content">
-          <section class="panel panel--hero">
-            <div class="section-heading">
-              <h2>Recently Played</h2>
-              <p>Swipe left/right or drag cards to reorder the Doubly Linked List.</p>
+        <section id="playlist-detail-view" class="hidden">
+          <section class="panel" id="playlist-details-panel">
+            <div class="playlist-details__header">
+              <div class="playlist-details__nav">
+                <button id="btn-back-dashboard" class="glossy-btn glossy-btn--small">← Dashboard</button>
+                <div>
+                  <h2 id="playlist-details-title">Playlist</h2>
+                  <p id="playlist-details-subtitle">Songs and metadata</p>
+                </div>
+              </div>
+              <div class="playlist-details__actions">
+                <button id="playlist-details-shuffle" class="control-btn control-btn--play" aria-label="Shuffle playlist">🔀</button>
+                <button id="playlist-details-play" class="control-btn control-btn--play" aria-label="Play playlist">▶</button>
+              </div>
             </div>
-            <div id="recently-played-track" class="carousel-track" aria-live="polite"></div>
-          </section>
 
-          <section class="panel">
-            <div class="section-heading">
-              <h2>Playlists</h2>
-              <p>Local and imported sources grouped by provider.</p>
-            </div>
-            <div id="playlists-grid" class="playlists-grid"></div>
-          </section>
-
-          <section class="panel panel--import">
-            <div class="section-heading">
-              <h2>Local Library Import</h2>
-              <p>Bulk-import hundreds of songs from disk.</p>
-            </div>
-            <div class="import-zone" id="import-zone">
-              <button id="btn-import-glossy" class="glossy-btn glossy-btn--hero">Import</button>
-              <p>Drop audio files here or use the button.</p>
+            <div class="playlist-details__table-wrap">
+              <table class="playlist-details__table" aria-label="Playlist songs">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Artist</th>
+                    <th>Duration</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody id="playlist-details-body"></tbody>
+              </table>
             </div>
           </section>
-        </div>
+        </section>
       </main>
 
       <footer id="player-bar" class="player-bar">
@@ -146,6 +181,48 @@
           <div class="modal__actions">
             <button id="btn-playlist-modal-back" class="glossy-btn glossy-btn--small hidden">Back</button>
             <button id="btn-playlist-modal-close" class="glossy-btn glossy-btn--small">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay hidden" id="song-properties-overlay">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="Song properties">
+          <h3>Song Properties</h3>
+          <p id="song-properties-name" class="playlist-sidebar__subtitle"></p>
+          <div class="photo-picker">
+            <img id="song-properties-cover-preview" alt="Song cover preview" />
+            <button id="song-properties-pick-cover" class="glossy-btn glossy-btn--small">Change cover</button>
+            <input id="song-properties-cover-file" type="file" accept="image/*" class="hidden" />
+          </div>
+          <textarea id="song-properties-lyrics" rows="8" placeholder="Add plain text lyrics"></textarea>
+          <div class="modal__actions">
+            <button id="song-properties-cancel" class="glossy-btn glossy-btn--small">Cancel</button>
+            <button id="song-properties-save" class="glossy-btn glossy-btn--small">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay hidden" id="confirm-modal-overlay">
+        <div class="modal modal--confirm" role="dialog" aria-modal="true" aria-label="Confirm action">
+          <h3 id="confirm-modal-title">Confirm</h3>
+          <p id="confirm-modal-message">Are you sure?</p>
+          <div class="modal__actions">
+            <button id="confirm-modal-cancel" class="glossy-btn glossy-btn--small">Cancel</button>
+            <button id="confirm-modal-confirm" class="glossy-btn glossy-btn--small">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="song-context-menu" class="song-context-menu hidden">
+        <button id="song-context-properties" class="song-context-menu__item">Properties</button>
+      </div>
+
+      <div id="song-focus-overlay" class="song-focus-overlay hidden">
+        <div class="song-focus-overlay__content">
+          <img id="song-focus-cover" alt="Current song cover" />
+          <div class="song-focus-overlay__lyrics-wrap">
+            <h3 id="song-focus-title">Lyrics</h3>
+            <pre id="song-focus-lyrics">No lyrics added for this song.</pre>
           </div>
         </div>
       </div>

@@ -285,6 +285,16 @@ export class PlaylistService {
     return this.state.dismissedRecentlySongIds.includes(songId);
   }
 
+  restoreSongToRecentlyPlayed(songId: string): boolean {
+    if (!this.state.songsById[songId]) return false;
+    const hadDismissed = this.state.dismissedRecentlySongIds.includes(songId);
+    if (!hadDismissed) return true;
+
+    this.state.dismissedRecentlySongIds = this.state.dismissedRecentlySongIds.filter((id) => id !== songId);
+    this.save();
+    return true;
+  }
+
   removeSong(songId: string): boolean {
     return this.removeSongFromQueue(songId);
   }

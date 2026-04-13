@@ -199,6 +199,7 @@ export class PlaylistDetailsView {
         event.stopPropagation();
         this.closeAllRowMenus();
         dropdown.classList.remove('hidden');
+        this.positionRowMenu(dropdown, menuButton);
       });
 
       const optionButtons = Array.from(tr.querySelectorAll('.playlist-row-dropdown__item')) as HTMLButtonElement[];
@@ -243,8 +244,28 @@ export class PlaylistDetailsView {
 
   private closeAllRowMenus(): void {
     this.body.querySelectorAll('.playlist-row-dropdown').forEach((menu) => {
+      menu.classList.remove('playlist-row-dropdown--up');
       menu.classList.add('hidden');
     });
+  }
+
+  private positionRowMenu(dropdown: HTMLElement, trigger: HTMLElement): void {
+    dropdown.classList.remove('playlist-row-dropdown--up');
+
+    const margin = 10;
+    const dropdownRect = dropdown.getBoundingClientRect();
+    const triggerRect = trigger.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - triggerRect.bottom - margin;
+
+    if (spaceBelow < dropdownRect.height) {
+      dropdown.classList.add('playlist-row-dropdown--up');
+    }
+
+    const updatedRect = dropdown.getBoundingClientRect();
+    if (updatedRect.top < margin) {
+      dropdown.classList.remove('playlist-row-dropdown--up');
+    }
   }
 
   private highlightCurrentSong(): void {

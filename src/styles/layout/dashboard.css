@@ -93,6 +93,13 @@
   margin-bottom: 12px;
 }
 
+.section-heading--centered {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
 .section-heading h2 {
   margin: 0;
   font-size: 1.2rem;

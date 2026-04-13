@@ -6,6 +6,7 @@ import { Toast } from '../../components/common/Toast.js';
 export class ArtistsLibraryView {
   private selectedArtistName = '';
   private selectedAlbumIndex = 0;
+  private readonly flippedAlbumNames = new Set<string>();
 
   private readonly artistsList = document.getElementById('artists-list') as HTMLElement;
   private readonly discographyTitle = document.getElementById('artist-discography-title') as HTMLElement;
@@ -49,6 +50,7 @@ export class ArtistsLibraryView {
   openArtist(artistName: string): void {
     this.selectedArtistName = artistName;
     this.selectedAlbumIndex = 0;
+    this.flippedAlbumNames.clear();
     this.render();
   }
 
@@ -57,6 +59,7 @@ export class ArtistsLibraryView {
       const albums = this.getSelectedAlbums();
       if (albums.length === 0) return;
       this.selectedAlbumIndex = (this.selectedAlbumIndex - 1 + albums.length) % albums.length;
+      this.flippedAlbumNames.clear();
       this.renderCoverFlow();
     });
 
@@ -64,6 +67,7 @@ export class ArtistsLibraryView {
       const albums = this.getSelectedAlbums();
       if (albums.length === 0) return;
       this.selectedAlbumIndex = (this.selectedAlbumIndex + 1) % albums.length;
+      this.flippedAlbumNames.clear();
       this.renderCoverFlow();
     });
 
@@ -88,6 +92,7 @@ export class ArtistsLibraryView {
       button.addEventListener('click', () => {
         this.selectedArtistName = artist.name;
         this.selectedAlbumIndex = 0;
+        this.flippedAlbumNames.clear();
         this.render();
       });
       this.artistsList.appendChild(button);
@@ -121,10 +126,34 @@ export class ArtistsLibraryView {
         : delta < 0
           ? `cf-album--left-${Math.abs(delta)}`
           : `cf-album--right-${delta}`;
-      card.className = `cf-album ${positionClass}`;
-      card.innerHTML = `<img class="cf-album__cover" src="${album.toArray()[0]?.albumArt || ''}" alt="${album.name} cover" />`;
+      const isFlipped = this.flippedAlbumNames.has(album.name);
+      card.className = `cf-album ${positionClass}${isFlipped ? ' cf-album--flipped' : ''}`;
+
+      const trackItems = album.toArray()
+        .map((song) => `<li><span>${song.title}</span><small>${this.formatDuration(song.duration)}</small></li>`)
+        .join('');
+
+      card.innerHTML = `
+        <div class="cf-album__inner">
+          <div class="cf-album__face cf-album__face--front">
+            <img class="cf-album__cover" src="${album.toArray()[0]?.albumArt || ''}" alt="${album.name} cover" />
+          </div>
+          <div class="cf-album__face cf-album__face--back">
+            <h4>${album.name}</h4>
+            <ol class="cf-album__tracks">${trackItems}</ol>
+          </div>
+        </div>
+      `;
+
       card.addEventListener('click', () => {
-        this.selectedAlbumIndex = index;
+        if (this.selectedAlbumIndex !== index) {
+          this.selectedAlbumIndex = index;
+          this.flippedAlbumNames.clear();
+        } else if (this.flippedAlbumNames.has(album.name)) {
+          this.flippedAlbumNames.delete(album.name);
+        } else {
+          this.flippedAlbumNames.add(album.name);
+        }
         this.renderCoverFlow();
       });
       this.flowRoot.appendChild(card);
@@ -136,6 +165,13 @@ export class ArtistsLibraryView {
 
   private getSelectedAlbums() {
     return this.libraryManager.getArtist(this.selectedArtistName)?.getAlbums() ?? [];
+  }
+
+  private formatDuration(durationSeconds: number): string {
+    const totalSeconds = Math.max(0, Math.floor(durationSeconds || 0));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    return `${minutes}:${seconds}`;
   }
 
   private saveAlbumFromQueue(): void {

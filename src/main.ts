@@ -87,6 +87,13 @@ async function bootstrap(): Promise<void> {
   player.events.on<{ songId: string }>('play', ({ songId }) => {
     const song = playlistService.getSongById(songId);
     if (!song) return;
+
+    playlistService.restoreSongToRecentlyPlayed(songId);
+    const currentIndex = player.playlist.indexOf(songId);
+    if (currentIndex > 0) {
+      player.moveSong(songId, 0);
+    }
+
     libraryManager.recordSongPlay(song);
     artistsLibraryView.render();
     renderDashboardArtists();

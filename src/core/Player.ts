@@ -211,6 +211,10 @@ export class Player {
       if (!node) return;
     }
 
+    if (!songId && !this._playlist.currentSong && !this._playlist.isEmpty) {
+      this._playlist.jumpToHead();
+    }
+
     const song = this._playlist.currentSong;
     if (!song) return;
 
@@ -250,7 +254,16 @@ export class Player {
   }
 
   togglePlay(): void {
-    this._isPlaying ? this.pause() : void this.play();
+    if (this._isPlaying) {
+      this.pause();
+      return;
+    }
+
+    if (!this.currentSong && !this._playlist.isEmpty) {
+      this._playlist.jumpToHead();
+    }
+
+    void this.play();
   }
 
   /** Advance to the next song. */

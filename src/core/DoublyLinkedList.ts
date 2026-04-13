@@ -220,8 +220,15 @@ export class DoublyLinkedList {
     if (!node) return false;
 
     const song = node.song;
+    const currentSongId = this.current?.id ?? null;
     this.remove(fromId);
     this.addAtPosition(song, toIndex);
+
+    if (currentSongId && this.has(currentSongId)) {
+      this.jumpToId(currentSongId);
+    } else if (this.has(fromId)) {
+      this.jumpToId(fromId);
+    }
 
     return true;
   }

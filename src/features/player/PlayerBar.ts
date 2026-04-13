@@ -8,6 +8,7 @@ import { formatTime } from '../../utils/helpers.js';
  * progress and volume sliders using PointerEvents.
  */
 export class PlayerBar {
+  private readonly body = document.body;
   private readonly art = document.getElementById('bar-art') as HTMLImageElement;
   private readonly title = document.getElementById('bar-title') as HTMLElement;
   private readonly artist = document.getElementById('bar-artist') as HTMLElement;
@@ -23,11 +24,15 @@ export class PlayerBar {
 
   private readonly volumeBar = document.getElementById('volume-bar') as HTMLElement;
   private readonly volumeFill = document.getElementById('volume-fill') as HTMLElement;
+  private readonly volumeIcon = document.getElementById('btn-volume-icon') as HTMLButtonElement;
 
   private readonly focusOverlay = document.getElementById('song-focus-overlay') as HTMLElement;
   private readonly focusCover = document.getElementById('song-focus-cover') as HTMLImageElement;
   private readonly focusTitle = document.getElementById('song-focus-title') as HTMLElement;
   private readonly focusLyrics = document.getElementById('song-focus-lyrics') as HTMLElement;
+  private readonly focusQueueCount = document.getElementById('song-focus-queue-count') as HTMLElement;
+  private readonly focusQueue = document.getElementById('song-focus-queue') as HTMLElement;
+  private readonly focusClose = document.getElementById('song-focus-close') as HTMLButtonElement;
 
   constructor(private readonly player: Player) {
     this.bindControls();
@@ -95,6 +100,11 @@ export class PlayerBar {
     this.volumeBar.addEventListener('pointerup', () => {
       dragging = false;
     });
+
+    this.volumeIcon.addEventListener('click', () => {
+      this.player.toggleMute();
+      this.syncVolumeIcon();
+    });
   }
 
   private bindPlayerEvents(): void {
@@ -120,12 +130,22 @@ export class PlayerBar {
 
     this.player.events.on<{ level: number }>('volume', ({ level }) => {
       this.volumeFill.style.width = `${level * 100}%`;
+      this.syncVolumeIcon();
     });
 
     this.player.events.on('next', () => this.syncMeta());
     this.player.events.on('previous', () => this.syncMeta());
     this.player.events.on('playlist-change', () => this.syncMeta());
     this.player.events.on('current-song-update', () => this.syncMeta());
+    this.player.events.on('queue-change', () => this.renderFocusQueue());
+  }
+
+  private syncVolumeIcon(): void {
+    const muted = this.player.isMuted;
+    const icon = muted || this.player.volume <= 0 ? '🔇' : '🔊';
+    this.volumeIcon.textContent = icon;
+    this.volumeIcon.setAttribute('aria-label', muted ? 'Unmute' : 'Mute');
+    this.volumeIcon.setAttribute('title', muted ? 'Unmute' : 'Mute');
   }
 
   private bindFocusOverlay(): void {
@@ -133,25 +153,92 @@ export class PlayerBar {
       const current = this.player.currentSong;
       if (!current) return;
 
-      this.focusCover.src = current.albumArt;
-      this.focusTitle.textContent = `${current.title} · Lyrics`;
-      this.focusLyrics.textContent = current.lyrics?.trim() || 'No lyrics added for this song.';
+      this.syncFocusContent();
       this.focusOverlay.classList.remove('hidden');
+      this.body.classList.add('focus-mode-open');
+    });
+
+    this.focusClose.addEventListener('click', () => {
+      this.closeFocusOverlay();
     });
 
     this.focusOverlay.addEventListener('click', (event) => {
       if (event.target === this.focusOverlay) {
-        this.focusOverlay.classList.add('hidden');
+        this.closeFocusOverlay();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !this.focusOverlay.classList.contains('hidden')) {
+        this.closeFocusOverlay();
       }
     });
   }
 
   private syncMeta(): void {
     const current = this.player.currentSong;
+    this.syncVolumeIcon();
     if (!current) return;
 
     this.art.src = current.albumArt;
     this.title.textContent = current.title;
     this.artist.textContent = current.artist;
+
+    if (!this.focusOverlay.classList.contains('hidden')) {
+      this.syncFocusContent();
+    }
+  }
+
+  private closeFocusOverlay(): void {
+    this.focusOverlay.classList.add('hidden');
+    this.body.classList.remove('focus-mode-open');
+  }
+
+  private syncFocusContent(): void {
+    const current = this.player.currentSong;
+    if (!current) return;
+
+    this.focusCover.src = current.albumArt;
+    this.focusTitle.textContent = `${current.title} · Lyrics`;
+    this.focusLyrics.textContent = current.lyrics?.trim() || 'No lyrics added for this song.';
+    this.renderFocusQueue();
+  }
+
+  private renderFocusQueue(): void {
+    const songs = this.player.playbackQueueSongs;
+    const activeIndex = this.player.queueCursorIndex;
+
+    this.focusQueueCount.textContent = `${songs.length} in queue`;
+    this.focusQueue.innerHTML = '';
+
+    if (songs.length === 0) {
+      this.focusQueue.innerHTML = '<p class="queue-empty">Queue is empty. Add songs from ⋯.</p>';
+      return;
+    }
+
+    songs.forEach((song, index) => {
+      const row = document.createElement('article');
+      row.className = `queue-row${index === activeIndex ? ' queue-row--active' : ''}`;
+      row.innerHTML = `
+        <div class="queue-row__meta">
+          <strong>${song.title}</strong>
+          <small>${song.artist} · ${song.album}</small>
+        </div>
+        <button class="queue-row__remove" aria-label="Remove from queue">✕</button>
+      `;
+
+      row.addEventListener('click', () => {
+        void this.player.play(song.id);
+      });
+
+      const removeButton = row.querySelector('.queue-row__remove') as HTMLButtonElement;
+      removeButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.player.removeFromPlaybackQueueAt(index);
+      });
+
+      this.focusQueue.appendChild(row);
+    });
   }
 }

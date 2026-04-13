@@ -16,7 +16,11 @@
           <div class="brand-lamp"></div>
           <h1>Sound-station</h1>
         </div>
+        <div class="chrome-header__search">
+          <input id="header-search" type="search" placeholder="Search songs, albums, artists or playlists" />
+        </div>
         <div class="chrome-header__actions">
+          <button id="btn-cover-flow" class="glossy-btn glossy-btn--small">🎵 Vista Previa</button>
           <button id="btn-import-service" class="glossy-btn glossy-btn--small">Import Service Playlist</button>
           <button id="btn-import-local" class="glossy-btn glossy-btn--small">Import Local Files</button>
         </div>
@@ -27,19 +31,51 @@
           <aside class="playlist-sidebar panel">
             <div class="playlist-sidebar__header">
               <h2>Your Playlists</h2>
-              <button id="btn-create-playlist" class="glossy-btn glossy-btn--small">+ Create</button>
+              <div class="playlist-sidebar__header-actions">
+                <button id="btn-toggle-sidebar" class="glossy-btn glossy-btn--small">☰</button>
+                <button id="btn-create-playlist" class="glossy-btn glossy-btn--small">+ Create</button>
+              </div>
             </div>
             <p class="playlist-sidebar__subtitle">Created or imported by you</p>
             <div id="sidebar-playlists" class="sidebar-playlists"></div>
           </aside>
 
           <div class="dashboard-content">
+            <section class="panel panel--albums">
+              <div class="section-heading">
+                <h2>Albums</h2>
+                <p>Click an album to inspect its songs and play instantly.</p>
+              </div>
+              <div id="albums-header-track" class="albums-header-track" aria-live="polite"></div>
+              <div id="albums-songs-list" class="albums-songs-list"></div>
+            </section>
+
             <section class="panel panel--hero">
               <div class="section-heading">
                 <h2>Recently Played</h2>
                 <p>Swipe left/right or drag cards to reorder the Doubly Linked List.</p>
               </div>
               <div id="recently-played-track" class="carousel-track" aria-live="polite"></div>
+            </section>
+
+            <section class="panel">
+              <div class="section-heading">
+                <h2>Artists</h2>
+                <button id="btn-open-artists-library" class="glossy-btn glossy-btn--small">Open Library</button>
+              </div>
+              <p class="playlist-sidebar__subtitle">Tap an artist to open a filtered discography.</p>
+              <div id="dashboard-artists-list" class="dashboard-artists-list"></div>
+            </section>
+
+            <section class="panel panel--queue">
+              <div class="section-heading">
+                <h2>Playback Queue</h2>
+                <div class="queue-actions">
+                  <span id="queue-count" class="playlist-sidebar__subtitle">0 in queue</span>
+                  <button id="btn-clear-queue" class="glossy-btn glossy-btn--small">Clear</button>
+                </div>
+              </div>
+              <div id="queue-list" class="queue-list"></div>
             </section>
 
             <section class="panel">
@@ -68,12 +104,16 @@
             <div class="playlist-details__header">
               <div class="playlist-details__nav">
                 <button id="btn-back-dashboard" class="glossy-btn glossy-btn--small">← Dashboard</button>
-                <div>
-                  <h2 id="playlist-details-title">Playlist</h2>
-                  <p id="playlist-details-subtitle">Songs and metadata</p>
+                <div class="playlist-details__hero">
+                  <img id="playlist-details-cover" src="" alt="Playlist cover" />
+                  <div>
+                    <h2 id="playlist-details-title">Playlist</h2>
+                    <p id="playlist-details-subtitle">Songs and metadata</p>
+                  </div>
                 </div>
               </div>
               <div class="playlist-details__actions">
+                <button id="playlist-details-add-song" class="glossy-btn glossy-btn--small hidden">+ Add Song</button>
                 <button id="playlist-details-shuffle" class="control-btn control-btn--play" aria-label="Shuffle playlist">🔀</button>
                 <button id="playlist-details-play" class="control-btn control-btn--play" aria-label="Play playlist">▶</button>
               </div>
@@ -84,14 +124,76 @@
                 <thead>
                   <tr>
                     <th>#</th>
+                    <th>Thumbnail</th>
                     <th>Title</th>
                     <th>Artist</th>
                     <th>Duration</th>
-                    <th>Source</th>
                   </tr>
                 </thead>
                 <tbody id="playlist-details-body"></tbody>
               </table>
+            </div>
+          </section>
+        </section>
+
+        <section id="cover-flow-view" class="hidden">
+          <div class="cf-view__nav">
+            <button id="btn-back-from-coverflow" class="glossy-btn glossy-btn--small">← Dashboard</button>
+            <div class="cf-view__nav-info">
+              <span class="cf-view__nav-title">Cover Flow</span>
+              <span class="cf-view__nav-subtitle">Doubly Linked List · Visual Mode</span>
+            </div>
+          </div>
+          <div class="cf-view__body">
+            <div
+              id="coverflow-stage"
+              class="coverflow-stage"
+              tabindex="0"
+              role="listbox"
+              aria-label="Cover Flow album browser"
+            ></div>
+            <div class="coverflow-meta">
+              <p class="coverflow-meta__title" id="cf-title">No song selected</p>
+              <p class="coverflow-meta__artist" id="cf-artist">—</p>
+            </div>
+            <div class="coverflow-keys" aria-hidden="true">
+              <kbd>←</kbd><span>prev node</span>
+              <kbd>→</kbd><span>next node</span>
+              <kbd>↵</kbd><span>reproducir</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="artists-view" class="hidden">
+          <section class="panel artists-panel">
+            <div class="playlist-details__nav">
+              <button id="btn-back-from-artists" class="glossy-btn glossy-btn--small">← Dashboard</button>
+              <div>
+                <h2>Artists</h2>
+                <p class="playlist-sidebar__subtitle">History and saved albums</p>
+              </div>
+            </div>
+
+            <div class="artists-layout">
+              <aside id="artists-list" class="artists-list"></aside>
+
+              <section class="artists-discography">
+                <div class="section-heading">
+                  <h3 id="artist-discography-title">Discography</h3>
+                  <div class="artists-discography__actions">
+                    <button id="btn-save-selected-album" class="glossy-btn glossy-btn--small">Save Album</button>
+                    <button id="btn-play-selected-album" class="glossy-btn glossy-btn--small">Play Album</button>
+                  </div>
+                </div>
+
+                <div class="artists-coverflow-wrap">
+                  <button id="btn-artist-album-prev" class="control-btn" aria-label="Previous album">◀</button>
+                  <div id="artist-album-coverflow" class="coverflow-stage coverflow-stage--albums" role="listbox"></div>
+                  <button id="btn-artist-album-next" class="control-btn" aria-label="Next album">▶</button>
+                </div>
+
+                <p id="artist-album-meta" class="playlist-sidebar__subtitle">No album selected</p>
+              </section>
             </div>
           </section>
         </section>
@@ -121,7 +223,7 @@
         </div>
 
         <div class="player-bar__volume">
-          <label for="volume-bar">Vol</label>
+          <button id="btn-volume-icon" class="volume-icon-btn" aria-label="Toggle mute" title="Toggle mute">🔊</button>
           <div id="volume-bar" class="volume-bar" role="slider" tabindex="0" aria-label="Volume">
             <div id="volume-fill" class="volume-bar__fill"></div>
           </div>
@@ -192,10 +294,26 @@
             <button id="song-properties-pick-cover" class="glossy-btn glossy-btn--small">Change cover</button>
             <input id="song-properties-cover-file" type="file" accept="image/*" class="hidden" />
           </div>
+          <input id="song-properties-artist" type="text" placeholder="Artist name" />
+          <input id="song-properties-album" type="text" placeholder="Album name" />
           <textarea id="song-properties-lyrics" rows="8" placeholder="Add plain text lyrics"></textarea>
           <div class="modal__actions">
             <button id="song-properties-cancel" class="glossy-btn glossy-btn--small">Cancel</button>
             <button id="song-properties-save" class="glossy-btn glossy-btn--small">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay hidden" id="album-properties-overlay">
+        <div class="modal" role="dialog" aria-modal="true" aria-label="Album properties">
+          <h3>Album Properties</h3>
+          <p id="album-properties-current" class="playlist-sidebar__subtitle"></p>
+          <input id="album-properties-artist" type="text" placeholder="Artist name" />
+          <input id="album-properties-collaborators" type="text" placeholder="Collaborators (comma-separated)" />
+          <input id="album-properties-album" type="text" placeholder="Album name" />
+          <div class="modal__actions">
+            <button id="album-properties-cancel" class="glossy-btn glossy-btn--small">Cancel</button>
+            <button id="album-properties-save" class="glossy-btn glossy-btn--small">Save</button>
           </div>
         </div>
       </div>
@@ -217,16 +335,25 @@
 
       <div id="song-focus-overlay" class="song-focus-overlay hidden">
         <div class="song-focus-overlay__content">
+          <button id="song-focus-close" class="song-focus-overlay__close" aria-label="Close focus mode">✕</button>
           <img id="song-focus-cover" alt="Current song cover" />
           <div class="song-focus-overlay__lyrics-wrap">
             <h3 id="song-focus-title">Lyrics</h3>
             <pre id="song-focus-lyrics">No lyrics added for this song.</pre>
           </div>
+          <aside class="song-focus-overlay__queue-wrap">
+            <div class="section-heading">
+              <h3>Queue</h3>
+              <p id="song-focus-queue-count">0 in queue</p>
+            </div>
+            <div id="song-focus-queue" class="queue-list"></div>
+          </aside>
         </div>
       </div>
 
       <input type="file" id="file-input" multiple accept="audio/*" class="hidden" aria-hidden="true" />
       <input type="file" id="playlist-local-files" multiple accept="audio/*" class="hidden" aria-hidden="true" />
+      <input type="file" id="playlist-details-local-files" multiple accept="audio/*" class="hidden" aria-hidden="true" />
       <div id="toast-container" class="toast-container"></div>
     </div>
 

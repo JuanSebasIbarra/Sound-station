@@ -15,6 +15,19 @@
   box-shadow: inset 0 1px 0 #fff, 0 -4px 10px rgba(0,0,0,0.15);
 }
 
+body.focus-mode-open .player-bar {
+  z-index: 160;
+  background: linear-gradient(to bottom, rgba(223, 232, 244, 0.42), rgba(154, 172, 198, 0.3));
+  backdrop-filter: blur(14px) saturate(120%);
+  border-top-color: rgba(166, 184, 211, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.65), 0 -6px 18px rgba(0,0,0,0.2);
+}
+
+body.focus-mode-open .chrome-header {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .player-bar__meta {
   display: flex;
   align-items: center;
@@ -97,7 +110,23 @@
   gap: 8px;
 }
 
-.player-bar__volume label { font-size: 0.78rem; color: #485568; }
+.volume-icon-btn {
+  border: 1px solid #627189;
+  border-radius: 999px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(to bottom, #f6f9fd, #c1cddd);
+  color: #3b4b63;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 #fff, 0 2px 4px rgba(0,0,0,0.15);
+  font-size: 0.9rem;
+}
+
+.volume-icon-btn:hover {
+  background: linear-gradient(to bottom, #ffffff, #d7e1ef);
+}
 
 .toast-container {
   position: fixed;
@@ -182,20 +211,44 @@
 
 .song-focus-overlay {
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 108px;
   z-index: 140;
-  background: rgba(8, 11, 18, 0.92);
+  background: linear-gradient(to bottom, rgba(7, 11, 18, 0.96), rgba(11, 18, 29, 0.9));
   display: grid;
   place-items: center;
   padding: 20px;
 }
 
 .song-focus-overlay__content {
-  width: min(1000px, 94vw);
+  position: relative;
+  width: min(1280px, 96vw);
   display: grid;
-  grid-template-columns: minmax(260px, 460px) 1fr;
+  grid-template-columns: minmax(240px, 380px) minmax(320px, 1fr) minmax(260px, 340px);
   gap: 22px;
   align-items: start;
+}
+
+.song-focus-overlay__close {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1px solid #7a8ba9;
+  background: linear-gradient(to bottom, #ffffff, #d5dfef);
+  color: #263145;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 #fff, 0 6px 14px rgba(0, 0, 0, 0.42);
+}
+
+.song-focus-overlay__close:hover {
+  background: linear-gradient(to bottom, #ffd8dc, #f1a9b2);
 }
 
 .song-focus-overlay__content img {
@@ -213,6 +266,40 @@
   padding: 14px;
   max-height: min(76vh, 760px);
   overflow: auto;
+}
+
+.song-focus-overlay__queue-wrap {
+  border: 1px solid rgba(122, 141, 174, 0.65);
+  border-radius: 14px;
+  background: linear-gradient(to bottom, rgba(236, 243, 251, 0.2), rgba(164, 180, 205, 0.12));
+  backdrop-filter: blur(10px) saturate(125%);
+  padding: 14px;
+  max-height: min(76vh, 760px);
+  overflow: auto;
+}
+
+.song-focus-overlay__queue-wrap .section-heading {
+  margin-bottom: 10px;
+}
+
+.song-focus-overlay__queue-wrap .section-heading h3,
+.song-focus-overlay__queue-wrap .section-heading p {
+  color: #edf4ff;
+}
+
+.song-focus-overlay__queue-wrap .queue-row {
+  background: linear-gradient(to bottom, rgba(255,255,255,0.18), rgba(159,177,205,0.16));
+  border-color: rgba(168, 190, 221, 0.46);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 10px rgba(0, 0, 0, 0.18);
+}
+
+.song-focus-overlay__queue-wrap .queue-row__meta strong {
+  color: #f2f7ff;
+}
+
+.song-focus-overlay__queue-wrap .queue-row__meta small,
+.song-focus-overlay__queue-wrap .queue-empty {
+  color: #d6e2f6;
 }
 
 .song-focus-overlay__lyrics-wrap h3 {
@@ -239,6 +326,10 @@
 
   .song-focus-overlay__content {
     grid-template-columns: 1fr;
+  }
+
+  .song-focus-overlay {
+    bottom: 180px;
   }
 
   .app-shell { padding-bottom: 180px; }

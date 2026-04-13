@@ -3,10 +3,9 @@ import './styles/components/glossy-button.css';
 import './styles/layout/dashboard.css';
 import './styles/features/cards.css';
 import './styles/features/player-bar.css';
+import './styles/features/cover-flow.css';
 
 import { Player } from './core/Player.js';
-import type { ISong } from './interfaces/ISong.js';
-import { generateGradientArt, generateId } from './utils/helpers.js';
 
 import { SpotifyImporter } from './services/SpotifyImporter.js';
 import { AppleMusicImporter } from './services/AppleMusicImporter.js';
@@ -18,99 +17,18 @@ import { NavigationController } from './components/layout/NavigationController.j
 import { Toast } from './components/common/Toast.js';
 import { ModalComponent } from './components/common/ModalComponent.js';
 import { PlaylistView } from './features/playlist/PlaylistView.js';
+import { CoverFlowView } from './features/playlist/CoverFlowView.js';
 import { PlayerBar } from './features/player/PlayerBar.js';
+import { PlaybackQueueView } from './features/player/PlaybackQueueView.js';
 import { PlaylistsView } from './features/library/PlaylistsView.js';
+import { AlbumHeaderView } from './features/library/AlbumHeaderView.js';
 import { LocalLibraryImportView } from './features/library/LocalLibraryImportView.js';
 import { PlaylistSidebarView } from './features/library/PlaylistSidebarView.js';
 import { PlaylistDetailsView } from './features/library/PlaylistDetailsView.js';
 import { PlaylistService } from './services/PlaylistService.js';
-
-// ═════════════════════════════════════════════════════════════════
-//  Demo seed data
-// ═════════════════════════════════════════════════════════════════
-
-const DEMO_AUDIO = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-
-const DEMO_SONGS: ISong[] = [
-  {
-    id: generateId(),
-    title: 'Watch the Throne',
-    artist: 'JAY-Z · Kanye West',
-    album: 'Collab Sessions',
-    duration: 217,
-    albumArt: generateGradientArt('Watch the Throne'),
-    description: 'High-fidelity hip-hop mix for the hero section.',
-    genre: 'Hip-Hop',
-    year: 2011,
-    source: 'local',
-    audioUrl: DEMO_AUDIO,
-  },
-  {
-    id: generateId(),
-    title: 'Vol. 3',
-    artist: 'Slipknot',
-    album: 'The Subliminal Verses',
-    duration: 262,
-    albumArt: generateGradientArt('Vol3 Slipknot'),
-    description: 'Heavy alt-metal with classic 2010-era dashboard energy.',
-    genre: 'Metal',
-    year: 2004,
-    source: 'spotify',
-    audioUrl: DEMO_AUDIO,
-  },
-  {
-    id: generateId(),
-    title: 'Beautiful Lie',
-    artist: 'Thirty Seconds to Mars',
-    album: 'A Beautiful Lie',
-    duration: 241,
-    albumArt: generateGradientArt('Beautiful Lie'),
-    description: 'Alternative anthem with cinematic dynamics.',
-    genre: 'Alternative',
-    year: 2005,
-    source: 'spotify',
-    audioUrl: DEMO_AUDIO,
-  },
-  {
-    id: generateId(),
-    title: 'Get Rich or Die Tryin\'',
-    artist: '50 Cent',
-    album: 'Bonus Edition',
-    duration: 208,
-    albumArt: generateGradientArt('Get Rich or Die Tryin'),
-    description: 'A gritty old-school urban groove.',
-    genre: 'Hip-Hop',
-    year: 2003,
-    source: 'youtube_music',
-    audioUrl: DEMO_AUDIO,
-  },
-  {
-    id: generateId(),
-    title: 'Pitbull Work',
-    artist: 'Pitbull',
-    album: 'Single',
-    duration: 179,
-    albumArt: generateGradientArt('Pitbull Work'),
-    description: 'Summer dance floor pulse, built for the hero carousel.',
-    genre: 'Dance',
-    year: 2013,
-    source: 'apple_music',
-    audioUrl: DEMO_AUDIO,
-  },
-  {
-    id: generateId(),
-    title: 'Rocket Loop',
-    artist: 'Juan Ibarra',
-    album: 'Local Collection',
-    duration: 191,
-    albumArt: generateGradientArt('Rocket Loop'),
-    description: 'Local library song card to demonstrate file-source grouping.',
-    genre: 'Local',
-    year: 2026,
-    source: 'apple_music',
-    audioUrl: DEMO_AUDIO,
-  },
-];
+import { StorageService } from './services/StorageService.js';
+import { LibraryManager } from './services/LibraryManager.js';
+import { ArtistsLibraryView } from './features/library/ArtistsLibraryView.js';
 
 // ═════════════════════════════════════════════════════════════════
 //  Bootstrap
@@ -122,8 +40,23 @@ async function bootstrap(): Promise<void> {
   const navigation = new NavigationController();
   const toast = new Toast(document.getElementById('toast-container') as HTMLElement);
   const confirmModal = new ModalComponent();
-  const playlistService = new PlaylistService();
-  const localImporter = new LocalFileImporter();
+  const storageService = new StorageService();
+  const playlistService = new PlaylistService(storageService);
+  const localImporter = new LocalFileImporter(storageService);
+  const libraryManager = LibraryManager.getInstance(storageService);
+  const sidebarPanel = document.querySelector('.playlist-sidebar') as HTMLElement;
+
+  const albumPropertiesOverlay = document.getElementById('album-properties-overlay') as HTMLElement;
+  const albumPropertiesCurrent = document.getElementById('album-properties-current') as HTMLElement;
+  const albumPropertiesArtist = document.getElementById('album-properties-artist') as HTMLInputElement;
+  const albumPropertiesCollaborators = document.getElementById('album-properties-collaborators') as HTMLInputElement;
+  const albumPropertiesAlbum = document.getElementById('album-properties-album') as HTMLInputElement;
+  const albumPropertiesCancel = document.getElementById('album-properties-cancel') as HTMLButtonElement;
+  const albumPropertiesSave = document.getElementById('album-properties-save') as HTMLButtonElement;
+
+  let albumEditingName = '';
+
+  await playlistService.relinkLocalPlaylistsFromM3U();
 
   const importers = {
     spotify: new SpotifyImporter(),
@@ -131,13 +64,186 @@ async function bootstrap(): Promise<void> {
     youtube: new YouTubeMusicImporter(),
   };
 
-  playlistService.seedIfEmpty(DEMO_SONGS);
   player.clearPlaylist();
   player.addMany(playlistService.getAllQueueSongs());
 
-  new PlaylistView(shell.recentlyPlayedTrack, player);
+  const syncQueueWithPersisted = (): void => {
+    player.clearPlaylist();
+    player.addMany(playlistService.getAllQueueSongs());
+  };
+
+  const coverFlowView = new CoverFlowView(
+    document.getElementById('coverflow-stage') as HTMLElement,
+    document.getElementById('cf-title')        as HTMLElement,
+    document.getElementById('cf-artist')       as HTMLElement,
+    player,
+  );
+
   new PlayerBar(player);
-  const playlistDetailsView = new PlaylistDetailsView(player, playlistService, toast);
+  new PlaybackQueueView(player);
+  const playlistDetailsView = new PlaylistDetailsView(player, playlistService, localImporter, toast);
+  const artistsLibraryView = new ArtistsLibraryView(libraryManager, playlistService, player, toast);
+
+  player.events.on<{ songId: string }>('play', ({ songId }) => {
+    const song = playlistService.getSongById(songId);
+    if (!song) return;
+    libraryManager.recordSongPlay(song);
+    artistsLibraryView.render();
+    renderDashboardArtists();
+  });
+
+  player.events.on<{ songId: string }>('playback-error', ({ songId }) => {
+    const song = playlistService.getSongById(songId);
+    const label = song?.title ?? 'track';
+    toast.show(`File Not Found: ${label}. Re-import to relink.`, 'error');
+  });
+
+  const closeAlbumPropertiesModal = (): void => {
+    albumPropertiesOverlay.classList.add('hidden');
+    albumEditingName = '';
+  };
+
+  const openAlbumPropertiesModal = (albumName: string): void => {
+    const songs = playlistService.getSongsForAlbum(albumName);
+    const firstSong = songs[0];
+    albumEditingName = albumName;
+    albumPropertiesCurrent.textContent = `Editing: ${albumName}`;
+    albumPropertiesArtist.value = firstSong?.artist ?? '';
+    albumPropertiesCollaborators.value = (firstSong?.collaborators ?? []).join(', ');
+    albumPropertiesAlbum.value = firstSong?.album ?? albumName;
+    albumPropertiesOverlay.classList.remove('hidden');
+  };
+
+  albumPropertiesCancel.addEventListener('click', closeAlbumPropertiesModal);
+  albumPropertiesOverlay.addEventListener('click', (event) => {
+    if (event.target === albumPropertiesOverlay) closeAlbumPropertiesModal();
+  });
+
+  albumPropertiesSave.addEventListener('click', () => {
+    if (!albumEditingName) return;
+
+    const updatedSongs = playlistService.updateAlbumMetadata(albumEditingName, {
+      artistName: albumPropertiesArtist.value,
+      albumName: albumPropertiesAlbum.value,
+      collaborators: albumPropertiesCollaborators.value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    });
+
+    if (updatedSongs.length === 0) {
+      toast.show('No songs found for album update.', 'error');
+      return;
+    }
+
+    updatedSongs.forEach((song) => {
+      player.updateSongMetadata(song.id, {
+        artist: song.artist,
+        album: song.album,
+        collaborators: song.collaborators,
+      });
+    });
+
+    libraryManager.rebuildFromSongs(playlistService.getAllQueueSongs());
+    artistsLibraryView.render();
+    playlistDetailsView.refreshCurrentPlaylist();
+    renderDashboardArtists();
+    toast.show('Album metadata updated.', 'success');
+    closeAlbumPropertiesModal();
+  });
+
+  const openArtistRoute = (artistName: string): void => {
+    navigation.showArtists();
+    artistsLibraryView.openArtist(artistName);
+  };
+
+  const renderDashboardArtists = (): void => {
+    const artists = libraryManager.getArtists();
+    shell.dashboardArtistsList.innerHTML = '';
+
+    if (artists.length === 0) {
+      shell.dashboardArtistsList.innerHTML = '<p class="playlist-sidebar__subtitle">No artists yet. Play any song to populate this section.</p>';
+      return;
+    }
+
+    artists.slice(0, 12).forEach((artist) => {
+      const card = document.createElement('article');
+      card.className = 'dashboard-artist-item';
+      card.innerHTML = `
+        <button class="dashboard-artist-item__queue" title="Add artist songs to queue">≡+</button>
+        <button class="dashboard-artist-item__open">
+          <strong>${artist.name}</strong>
+          <small>${artist.getAlbums().length} albums</small>
+        </button>
+      `;
+
+      const openBtn = card.querySelector('.dashboard-artist-item__open') as HTMLButtonElement;
+      const queueBtn = card.querySelector('.dashboard-artist-item__queue') as HTMLButtonElement;
+
+      openBtn.addEventListener('click', () => openArtistRoute(artist.name));
+      queueBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const songs = player.playlist.toArray().filter((song) => song.artist === artist.name);
+        songs.forEach((song) => {
+          player.addToPlaybackQueue(song.id);
+        });
+        if (songs.length > 0) {
+          toast.show(`Added ${songs.length} song(s) to queue.`, 'success');
+        }
+      });
+
+      shell.dashboardArtistsList.appendChild(card);
+    });
+  };
+
+  const applyHeaderSearchFilter = (): void => {
+    const term = shell.headerSearchInput.value.trim().toLowerCase();
+    const selectors = [
+      '.song-card',
+      '.album-chip',
+      '.dashboard-artist-item',
+      '.playlist-tile',
+      '.queue-row',
+      '.sidebar-playlist-item',
+    ];
+
+    selectors.forEach((selector) => {
+      document.querySelectorAll<HTMLElement>(selector).forEach((element) => {
+        if (!term) {
+          element.classList.remove('hidden');
+          return;
+        }
+        const haystack = (element.textContent ?? '').toLowerCase();
+        element.classList.toggle('hidden', !haystack.includes(term));
+      });
+    });
+  };
+
+  renderDashboardArtists();
+
+  new AlbumHeaderView(shell.albumsHeaderTrack, shell.albumsSongsList, player, {
+    onRemoveAlbum: (albumName) => {
+      const removedCount = playlistService.removeAlbumFromQueue(albumName);
+      if (removedCount === 0) return;
+      syncQueueWithPersisted();
+      playlistDetailsView.refreshCurrentPlaylist();
+      toast.show(`Album removed from playback (${removedCount} songs).`, 'success');
+    },
+    onOpenAlbumProperties: (albumName) => {
+      openAlbumPropertiesModal(albumName);
+    },
+  });
+
+  const playlistView = new PlaylistView(shell.recentlyPlayedTrack, player, {
+    isSongVisible: (song) => !playlistService.isSongDismissedFromRecentlyPlayed(song.id),
+    onRemoveSong: (songId) => {
+      const removed = playlistService.dismissSongFromRecentlyPlayed(songId);
+      if (!removed) return;
+      toast.show('Removed from recently played history.', 'success');
+      playlistView.render();
+    },
+  });
 
   const openPlaylist = (playlistId: string): void => {
     const playlist = playlistService.getPlaylistById(playlistId);
@@ -152,11 +258,17 @@ async function bootstrap(): Promise<void> {
     (playlist) => openPlaylist(playlist.id),
     confirmModal,
     toast,
+    (playlist) => {
+      const songs = playlistService.getSongsForPlaylist(playlist.id);
+      songs.forEach((song) => player.addToPlaybackQueue(song.id));
+      if (songs.length > 0) {
+        toast.show(`Added ${songs.length} song(s) from playlist to queue.`, 'success');
+      }
+    },
     () => {
       playlistSidebarView.render();
       playlistDetailsView.refreshCurrentPlaylist();
-      player.clearPlaylist();
-      player.addMany(playlistService.getAllQueueSongs());
+      syncQueueWithPersisted();
     },
   );
 
@@ -170,8 +282,7 @@ async function bootstrap(): Promise<void> {
     () => {
       playlistsView.render();
       playlistDetailsView.refreshCurrentPlaylist();
-      player.clearPlaylist();
-      player.addMany(playlistService.getAllQueueSongs());
+      syncQueueWithPersisted();
     },
   );
 
@@ -184,14 +295,26 @@ async function bootstrap(): Promise<void> {
     toast,
   );
 
+  shell.coverFlowButton.addEventListener('click', () => {
+    navigation.showCoverFlow();
+    coverFlowView.focusStage();
+  });
+  shell.headerSearchInput.addEventListener('input', applyHeaderSearchFilter);
+  shell.toggleSidebarButton.addEventListener('click', () => {
+    sidebarPanel.classList.toggle('playlist-sidebar--expanded');
+  });
+  shell.openArtistsLibraryButton.addEventListener('click', () => {
+    navigation.showArtists();
+    artistsLibraryView.render();
+  });
   shell.localImportButton.addEventListener('click', () => playlistSidebarView.openModal('local'));
   shell.glossyImportButton.addEventListener('click', () => shell.fileInput.click());
   shell.serviceImportButton.addEventListener('click', () => playlistSidebarView.openModal('import'));
   shell.backDashboardButton.addEventListener('click', () => navigation.showDashboard());
+  shell.backFromArtistsButton.addEventListener('click', () => navigation.showDashboard());
 
-  if (player.currentSong) {
-    await player.play(player.currentSong.id);
-  }
+  player.events.on('playlist-change', applyHeaderSearchFilter);
+  player.events.on('queue-change', applyHeaderSearchFilter);
 }
 
 // ═════════════════════════════════════════════════════════════════

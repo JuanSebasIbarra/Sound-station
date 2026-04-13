@@ -39,6 +39,8 @@ export class Player {
   private _shuffle      = false;
   private _repeatMode: RepeatMode = 'none';
   private _shuffleStack: ISong[] = [];
+  private _playbackQueueSongIds: string[] = [];
+  private _queueCursorIndex = -1;
 
   /** @private – use Player.getInstance() */
   private constructor() {
@@ -63,6 +65,13 @@ export class Player {
   get currentSong(): ISong | null  { return this._playlist.currentSong; }
   get currentTime(): number        { return this._audio.currentTime; }
   get duration(): number           { return this._audio.duration || 0; }
+  get playbackQueueSongIds(): string[] { return [...this._playbackQueueSongIds]; }
+  get playbackQueueSongs(): ISong[] {
+    return this._playbackQueueSongIds
+      .map((songId) => this.getSongById(songId))
+      .filter((song): song is ISong => Boolean(song));
+  }
+  get queueCursorIndex(): number { return this._queueCursorIndex; }
 
   // ─────────────────────────────────────────────────────────────
   //  Playlist mutation helpers (delegate to DoublyLinkedList)
@@ -90,6 +99,7 @@ export class Player {
 
   remove(id: string): void {
     const wasCurrent = this._playlist.currentSong?.id === id;
+    this.removeFromPlaybackQueue(id);
     this._playlist.remove(id);
 
     if (wasCurrent && this._isPlaying) {
@@ -103,8 +113,57 @@ export class Player {
     this._audio.src = '';
     this._isPlaying = false;
     this._playlist.clear();
+    this.clearPlaybackQueue();
     this.events.emit('stop', undefined);
     this.events.emit('playlist-change', undefined);
+  }
+
+  addToPlaybackQueue(songId: string): boolean {
+    const song = this.getSongById(songId);
+    if (!song) return false;
+
+    this._playbackQueueSongIds.push(song.id);
+    this.events.emit('queue-change', {
+      songIds: this.playbackQueueSongIds,
+      activeIndex: this._queueCursorIndex,
+    });
+    return true;
+  }
+
+  removeFromPlaybackQueueAt(index: number): boolean {
+    if (index < 0 || index >= this._playbackQueueSongIds.length) return false;
+
+    this._playbackQueueSongIds.splice(index, 1);
+    if (this._playbackQueueSongIds.length === 0) {
+      this._queueCursorIndex = -1;
+    } else if (index <= this._queueCursorIndex) {
+      this._queueCursorIndex = Math.max(0, this._queueCursorIndex - 1);
+    }
+
+    this.events.emit('queue-change', {
+      songIds: this.playbackQueueSongIds,
+      activeIndex: this._queueCursorIndex,
+    });
+    return true;
+  }
+
+  removeFromPlaybackQueue(songId: string): boolean {
+    const index = this._playbackQueueSongIds.findIndex((id) => id === songId);
+    if (index < 0) return false;
+    return this.removeFromPlaybackQueueAt(index);
+  }
+
+  isSongQueued(songId: string): boolean {
+    return this._playbackQueueSongIds.includes(songId);
+  }
+
+  clearPlaybackQueue(): void {
+    this._playbackQueueSongIds = [];
+    this._queueCursorIndex = -1;
+    this.events.emit('queue-change', {
+      songIds: [],
+      activeIndex: -1,
+    });
   }
 
   moveSong(fromId: string, toIndex: number): void {
@@ -137,6 +196,16 @@ export class Player {
    * If a `songId` is provided the cursor jumps to that song first.
    */
   async play(songId?: string): Promise<void> {
+    if (songId && this._playbackQueueSongIds.length > 0) {
+      const queueIndex = this._playbackQueueSongIds.findIndex((id) => id === songId);
+      if (queueIndex >= 0) this._queueCursorIndex = queueIndex;
+    }
+
+    if (!songId && this._playbackQueueSongIds.length > 0 && this._queueCursorIndex === -1) {
+      this._queueCursorIndex = 0;
+      songId = this._playbackQueueSongIds[0];
+    }
+
     if (songId) {
       const node = this._playlist.jumpToId(songId);
       if (!node) return;
@@ -144,6 +213,15 @@ export class Player {
 
     const song = this._playlist.currentSong;
     if (!song) return;
+
+    if (song.isFileAvailable === false || !song.audioUrl) {
+      this._isPlaying = false;
+      this.events.emit('playback-error', {
+        songId: song.id,
+        reason: song.missingReason ?? 'not_found',
+      });
+      return;
+    }
 
     // If the audio element is already loaded with this song, just resume
     const isSameSource = this._audio.src !== '' &&
@@ -177,6 +255,32 @@ export class Player {
 
   /** Advance to the next song. */
   async next(): Promise<void> {
+    if (this._playbackQueueSongIds.length > 0) {
+      if (this._queueCursorIndex < 0) {
+        this._queueCursorIndex = 0;
+      } else if (this._queueCursorIndex < this._playbackQueueSongIds.length - 1) {
+        this._queueCursorIndex += 1;
+      } else if (this._repeatMode === 'all') {
+        this._queueCursorIndex = 0;
+      } else {
+        return;
+      }
+
+      const queueSongId = this._playbackQueueSongIds[this._queueCursorIndex];
+      if (!queueSongId) return;
+      this._playlist.jumpToId(queueSongId);
+      const queueSong = this._playlist.currentSong;
+      if (!queueSong) return;
+
+      await this._loadCurrentAndPlay();
+      this.events.emit('queue-change', {
+        songIds: this.playbackQueueSongIds,
+        activeIndex: this._queueCursorIndex,
+      });
+      this.events.emit('next', { songId: queueSong.id });
+      return;
+    }
+
     let song: ISong | null = null;
 
     if (this._shuffle) {
@@ -202,6 +306,32 @@ export class Player {
     // If more than 3 s played, restart instead of going back
     if (this._audio.currentTime > 3) {
       this._audio.currentTime = 0;
+      return;
+    }
+
+    if (this._playbackQueueSongIds.length > 0) {
+      if (this._queueCursorIndex <= 0) {
+        if (this._repeatMode === 'all' && this._playbackQueueSongIds.length > 0) {
+          this._queueCursorIndex = this._playbackQueueSongIds.length - 1;
+        } else {
+          return;
+        }
+      } else {
+        this._queueCursorIndex -= 1;
+      }
+
+      const queueSongId = this._playbackQueueSongIds[this._queueCursorIndex];
+      if (!queueSongId) return;
+      this._playlist.jumpToId(queueSongId);
+      const queueSong = this._playlist.currentSong;
+      if (!queueSong) return;
+
+      await this._loadCurrentAndPlay();
+      this.events.emit('queue-change', {
+        songIds: this.playbackQueueSongIds,
+        activeIndex: this._queueCursorIndex,
+      });
+      this.events.emit('previous', { songId: queueSong.id });
       return;
     }
 
@@ -300,6 +430,14 @@ export class Player {
   private async _loadCurrentAndPlay(): Promise<void> {
     const song = this._playlist.currentSong;
     if (!song) return;
+    if (song.isFileAvailable === false || !song.audioUrl) {
+      this._isPlaying = false;
+      this.events.emit('playback-error', {
+        songId: song.id,
+        reason: song.missingReason ?? 'not_found',
+      });
+      return;
+    }
     this._loadSong(song);
     try {
       await this._audio.play();

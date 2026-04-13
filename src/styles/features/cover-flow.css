@@ -1,0 +1,265 @@
+/* ═══════════════════════════════════════════════════════════════
+   Cover Flow – iOS 6 Skeuomorphic Full-Screen 3-D Album Carousel
+
+   Estructura de datos visualizada → DoublyLinkedList:
+     Left  albums  =  node.prev chain  (hasta MAX_SIDES de profundidad)
+     Center album  =  currentNode       (cursor activo)
+     Right albums  =  node.next chain  (hasta MAX_SIDES de profundidad)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Full-screen overlay view ───────────────────────────────── */
+#cover-flow-view {
+  position: fixed;
+  inset: 0;
+  z-index: 20;            /* above sticky header (15), below player bar (25) */
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #18181c 0%, #06060a 50%, #111117 100%);
+  padding-bottom: 108px;  /* reserve space for the fixed player bar */
+}
+/* .hidden { display: none !important } hides this when inactive */
+
+/* ── Top navigation bar ─────────────────────────────────────── */
+.cf-view__nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 20px;
+  background: linear-gradient(to bottom,
+    rgba(255,255,255,0.08),
+    rgba(255,255,255,0.02));
+  border-bottom: 1px solid rgba(255,255,255,0.09);
+  box-shadow: 0 1px 10px rgba(0,0,0,0.55);
+  flex-shrink: 0;
+}
+
+.cf-view__nav-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cf-view__nav-title {
+  display: block;
+  color: #f2f2f7;
+  font-weight: 700;
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
+}
+
+.cf-view__nav-subtitle {
+  display: block;
+  color: #636366;
+  font-size: 0.74rem;
+  letter-spacing: 0.03em;
+  margin-top: 2px;
+}
+
+/* ── Body wrapper (stage + meta + keys, vertically centered) ─── */
+.cf-view__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 12px 0 0;
+}
+
+/* ── 3-D stage (perspective viewport) ───────────────────────── */
+.coverflow-stage {
+  position: relative;
+  width: 100%;
+  max-width: 920px;
+  height: 290px;
+  perspective: 1200px;
+  perspective-origin: 50% 44%;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+}
+
+.coverflow-stage:focus-visible {
+  outline: 2px solid rgba(80, 150, 255, 0.5);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* ── Album tile – shared base ────────────────────────────────── */
+.cf-album {
+  position: absolute;
+  width: 195px;
+  height: 195px;
+  left:  calc(50% - 97.5px);
+  top:   calc(50% - 97.5px);
+  transition:
+    transform 0.4s  cubic-bezier(0.23, 1, 0.32, 1),
+    opacity   0.35s cubic-bezier(0.23, 1, 0.32, 1),
+    filter    0.3s  ease;
+  cursor: pointer;
+  will-change: transform, opacity;
+}
+
+/* Cover image with glass-floor reflection */
+.cf-album__cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.13);
+  box-shadow:
+    0 10px 38px rgba(0,0,0,0.92),
+    inset 0 1px 0 rgba(255,255,255,0.07);
+  display: block;
+  pointer-events: none;
+  /* iOS-style glass-floor reflection */
+  -webkit-box-reflect: below 5px
+    linear-gradient(transparent 52%, rgba(0,0,0,0.48));
+}
+
+/* ── Per-position placement classes ─────────────────────────── */
+
+/* Center → currentNode */
+.cf-album--center {
+  transform: translate3d(0, 0, 0) rotateY(0deg);
+  z-index: 10;
+}
+
+/* Left-1 → currentNode.prev */
+.cf-album--left-1 {
+  transform: translate3d(-225px, 0, -90px) rotateY(55deg);
+  z-index: 7;
+}
+
+/* Left-2 → currentNode.prev.prev */
+.cf-album--left-2 {
+  transform: translate3d(-400px, 0, -170px) rotateY(55deg);
+  z-index: 5;
+  opacity: 0.72;
+}
+
+/* Left-3 → currentNode.prev.prev.prev */
+.cf-album--left-3 {
+  transform: translate3d(-535px, 0, -240px) rotateY(55deg);
+  z-index: 3;
+  opacity: 0.40;
+}
+
+/* Right-1 → currentNode.next */
+.cf-album--right-1 {
+  transform: translate3d(225px, 0, -90px) rotateY(-55deg);
+  z-index: 7;
+}
+
+/* Right-2 → currentNode.next.next */
+.cf-album--right-2 {
+  transform: translate3d(400px, 0, -170px) rotateY(-55deg);
+  z-index: 5;
+  opacity: 0.72;
+}
+
+/* Right-3 → currentNode.next.next.next */
+.cf-album--right-3 {
+  transform: translate3d(535px, 0, -240px) rotateY(-55deg);
+  z-index: 3;
+  opacity: 0.40;
+}
+
+/* ── Hover brightness for side albums ───────────────────────── */
+.cf-album--left-1:hover,
+.cf-album--right-1:hover  { filter: brightness(1.22); opacity: 1;    }
+.cf-album--left-2:hover,
+.cf-album--right-2:hover  { filter: brightness(1.14); opacity: 0.90; }
+.cf-album--left-3:hover,
+.cf-album--right-3:hover  { filter: brightness(1.08); opacity: 0.62; }
+
+/* ── Metadata strip (title + artist below stage) ─────────────── */
+.coverflow-meta {
+  text-align: center;
+  padding: 22px 28px 8px;
+  max-width: 640px;
+  width: 100%;
+}
+
+.coverflow-meta__title {
+  margin: 0;
+  color: #f2f2f7;
+  font-size: 1.1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 5px rgba(0,0,0,0.85);
+}
+
+.coverflow-meta__artist {
+  margin: 4px 0 0;
+  color: #8e8e93;
+  font-size: 0.84rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Keyboard-hint row ───────────────────────────────────────── */
+.coverflow-keys {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-bottom: 6px;
+}
+
+.coverflow-keys span {
+  color: #48484a;
+  font-size: 0.72rem;
+  margin-right: 4px;
+}
+
+.coverflow-keys kbd {
+  display: inline-block;
+  padding: 2px 8px;
+  background: linear-gradient(to bottom, #3a3a3c, #1c1c1e);
+  border: 1px solid #48484a;
+  border-bottom-color: #000;
+  border-radius: 5px;
+  color: #aeaeb2;
+  font-size: 0.72rem;
+  font-family: inherit;
+  box-shadow: 0 2px 0 #000;
+  line-height: 1.5;
+}
+
+/* ── Empty-state placeholder ─────────────────────────────────── */
+.cf-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #48484a;
+  font-size: 0.88rem;
+  pointer-events: none;
+}
+
+/* ── Responsive: smaller stage on narrow viewports ──────────── */
+@media (max-width: 720px) {
+  .coverflow-stage {
+    height: 230px;
+    perspective: 820px;
+  }
+
+  .cf-album {
+    width: 140px;
+    height: 140px;
+    left:  calc(50% - 70px);
+    top:   calc(50% - 70px);
+  }
+
+  .cf-album--left-1  { transform: translate3d(-158px, 0, -62px)  rotateY(55deg); }
+  .cf-album--left-2  { transform: translate3d(-282px, 0, -118px) rotateY(55deg); opacity: 0.72; }
+  .cf-album--left-3  { transform: translate3d(-378px, 0, -165px) rotateY(55deg); opacity: 0.40; }
+  .cf-album--right-1 { transform: translate3d(158px,  0, -62px)  rotateY(-55deg); }
+  .cf-album--right-2 { transform: translate3d(282px,  0, -118px) rotateY(-55deg); opacity: 0.72; }
+  .cf-album--right-3 { transform: translate3d(378px,  0, -165px) rotateY(-55deg); opacity: 0.40; }
+}

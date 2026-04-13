@@ -22,6 +22,7 @@ export class PlaylistsView {
     private readonly onOpenPlaylist: (playlist: IUserPlaylist) => void,
     private readonly modal: ModalComponent,
     private readonly toast: Toast,
+    private readonly onQueuePlaylist?: (playlist: IUserPlaylist) => void,
     private readonly onPlaylistsChanged?: () => void,
   ) {
     this.render();
@@ -37,9 +38,22 @@ export class PlaylistsView {
       const tile = document.createElement('article');
       tile.className = 'playlist-tile';
       tile.innerHTML = `
-        <h3>${playlist.name}</h3>
-        <small>${meta.icon} ${meta.label} · ${playlist.songIds.length} songs</small>
+        <img class="playlist-tile__thumb" src="${playlist.coverArt}" alt="${playlist.name} cover" />
+        <div class="playlist-tile__body">
+          <h3>${playlist.name}</h3>
+          <small>${meta.icon} ${meta.label} · ${playlist.songIds.length} songs</small>
+        </div>
       `;
+
+      const queueButton = document.createElement('button');
+      queueButton.className = 'playlist-card-queue-btn';
+      queueButton.title = 'Add playlist to queue';
+      queueButton.textContent = '≡+';
+
+      queueButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        this.onQueuePlaylist?.(playlist);
+      });
 
       const deleteButton = document.createElement('button');
       deleteButton.className = 'sidebar-playlist-delete';
@@ -62,6 +76,7 @@ export class PlaylistsView {
         this.onPlaylistsChanged?.();
       });
 
+  tile.appendChild(queueButton);
       tile.appendChild(deleteButton);
 
       tile.addEventListener('click', () => {

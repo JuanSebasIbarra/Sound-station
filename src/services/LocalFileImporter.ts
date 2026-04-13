@@ -1,6 +1,7 @@
 import type { IPlaylistImporter } from '../interfaces/IPlaylistImporter.js';
 import type { ISong } from '../interfaces/ISong.js';
 import { generateId, generateGradientArt } from '../utils/helpers.js';
+import { StorageService } from './StorageService.js';
 
 /**
  * LocalFileImporter – bulk-imports audio files from the user's device.
@@ -13,6 +14,8 @@ import { generateId, generateGradientArt } from '../utils/helpers.js';
  */
 export class LocalFileImporter implements IPlaylistImporter {
   readonly name = 'Local Files';
+
+  constructor(private readonly storageService: StorageService = new StorageService()) {}
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async authenticate(_credentials: Record<string, string>): Promise<boolean> {
@@ -44,6 +47,9 @@ export class LocalFileImporter implements IPlaylistImporter {
     const audioUrl  = URL.createObjectURL(file);
     const duration  = await this._getAudioDuration(audioUrl);
     const { title, artist } = this._parseFileName(file.name);
+    const localFilePath = file.webkitRelativePath || file.name;
+
+    await this.storageService.saveAudioBlob(localFilePath, file);
 
     return {
       id:          generateId(),
@@ -56,6 +62,8 @@ export class LocalFileImporter implements IPlaylistImporter {
       audioUrl,
       source:      'local',
       genre:       'Unknown',
+      localFilePath,
+      isFileAvailable: true,
     };
   }
 

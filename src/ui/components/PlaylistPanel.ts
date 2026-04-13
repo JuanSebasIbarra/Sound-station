@@ -2,18 +2,7 @@ import { Player } from '../../core/Player.js';
 import type { ISong } from '../../interfaces/ISong.js';
 import { formatTime, generateGradientArt } from '../../utils/helpers.js';
 
-/**
- * PlaylistPanel – renders and manages the sidebar queue list.
- *
- * Responsibilities:
- *  • Render the full playlist from the DoublyLinkedList
- *  • Highlight the currently playing item
- *  • Provide per-item remove buttons
- *  • Enable drag-and-drop reordering (items get `draggable="true"`)
- *  • Swipe-to-remove via PointerEvents on each item
- *  • Quick-add form at the top
- *  • Live search filtering
- */
+
 export class PlaylistPanel {
   private readonly player: Player;
 

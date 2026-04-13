@@ -45,4 +45,16 @@ export interface ISong {
 
   /** Optional plain text lyrics authored/imported by user */
   lyrics?: string;
+
+  /** Optional list of collaborator artist names */
+  collaborators?: string[];
+
+  /** Stable local path/key used for M3U persistence and re-linking */
+  localFilePath?: string;
+
+  /** Local file availability state after startup re-linking */
+  isFileAvailable?: boolean;
+
+  /** Optional reason for unavailable local files */
+  missingReason?: 'not_found' | 'permission_denied' | 'unknown';
 }

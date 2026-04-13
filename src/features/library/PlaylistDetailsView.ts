@@ -5,6 +5,8 @@ import { PlaylistService } from '../../services/PlaylistService.js';
 import { Toast } from '../../components/common/Toast.js';
 import { formatTime } from '../../utils/helpers.js';
 import { PointerGestureController } from '../../hooks/PointerGestureController.js';
+import { LocalFileImporter } from '../../services/LocalFileImporter.js';
+import { LibraryManager } from '../../services/LibraryManager.js';
 
 /**
  * PlaylistDetailsView
@@ -12,7 +14,7 @@ import { PointerGestureController } from '../../hooks/PointerGestureController.j
  * Renders songs for the selected user playlist and handles:
  *  - play/shuffle actions
  *  - right-click context menu for local playlist songs
- *  - song properties editor (cover + plain text lyrics)
+ *  - song properties editor (artist + album + cover + plain text lyrics)
  */
 export class PlaylistDetailsView {
   private activePlaylist: IUserPlaylist | null = null;
@@ -21,28 +23,32 @@ export class PlaylistDetailsView {
   private readonly gesture: PointerGestureController;
 
   private readonly panel = document.getElementById('playlist-detail-view') as HTMLElement;
+  private readonly cover = document.getElementById('playlist-details-cover') as HTMLImageElement;
   private readonly title = document.getElementById('playlist-details-title') as HTMLElement;
   private readonly subtitle = document.getElementById('playlist-details-subtitle') as HTMLElement;
   private readonly body = document.getElementById('playlist-details-body') as HTMLElement;
 
   private readonly playBtn = document.getElementById('playlist-details-play') as HTMLButtonElement;
   private readonly shuffleBtn = document.getElementById('playlist-details-shuffle') as HTMLButtonElement;
-
-  private readonly contextMenu = document.getElementById('song-context-menu') as HTMLElement;
-  private readonly contextPropertiesBtn = document.getElementById('song-context-properties') as HTMLButtonElement;
+  private readonly addSongBtn = document.getElementById('playlist-details-add-song') as HTMLButtonElement;
+  private readonly addSongInput = document.getElementById('playlist-details-local-files') as HTMLInputElement;
 
   private readonly propertiesOverlay = document.getElementById('song-properties-overlay') as HTMLElement;
   private readonly propertiesName = document.getElementById('song-properties-name') as HTMLElement;
   private readonly propertiesCoverPreview = document.getElementById('song-properties-cover-preview') as HTMLImageElement;
   private readonly propertiesPickCover = document.getElementById('song-properties-pick-cover') as HTMLButtonElement;
   private readonly propertiesCoverFile = document.getElementById('song-properties-cover-file') as HTMLInputElement;
+  private readonly propertiesArtist = document.getElementById('song-properties-artist') as HTMLInputElement;
+  private readonly propertiesAlbum = document.getElementById('song-properties-album') as HTMLInputElement;
   private readonly propertiesLyrics = document.getElementById('song-properties-lyrics') as HTMLTextAreaElement;
   private readonly propertiesCancel = document.getElementById('song-properties-cancel') as HTMLButtonElement;
   private readonly propertiesSave = document.getElementById('song-properties-save') as HTMLButtonElement;
+  private readonly libraryManager = LibraryManager.getInstance();
 
   constructor(
     private readonly player: Player,
     private readonly playlistService: PlaylistService,
+    private readonly localImporter: LocalFileImporter,
     private readonly toast: Toast,
   ) {
     this.gesture = new PointerGestureController(this.panel, {
@@ -83,14 +89,35 @@ export class PlaylistDetailsView {
       void this.player.play(randomSong.id);
     });
 
-    this.contextPropertiesBtn.addEventListener('click', () => {
-      this.contextMenu.classList.add('hidden');
-      if (!this.editingSongId) return;
-      this.openPropertiesModal(this.editingSongId);
+    this.addSongBtn.addEventListener('click', () => {
+      if (this.activePlaylist?.source !== 'local') return;
+      this.addSongInput.click();
+    });
+
+    this.addSongInput.addEventListener('change', async () => {
+      if (this.activePlaylist?.source !== 'local') return;
+      const files = this.addSongInput.files;
+      if (!files?.length) return;
+
+      const songs = await this.localImporter.importFiles(files);
+      this.addSongInput.value = '';
+
+      if (songs.length === 0) {
+        this.toast.show('No audio files found.', 'error');
+        return;
+      }
+
+      const updated = this.playlistService.addSongsToPlaylist(this.activePlaylist.id, songs);
+      if (!updated) return;
+
+      this.activePlaylist = updated;
+      this.player.addMany(songs);
+      this.toast.show(`${songs.length} song(s) added to playlist.`, 'success');
+      this.render();
     });
 
     document.addEventListener('click', () => {
-      this.contextMenu.classList.add('hidden');
+      this.closeAllRowMenus();
     });
 
     this.propertiesOverlay.addEventListener('click', (event) => {
@@ -128,35 +155,95 @@ export class PlaylistDetailsView {
     const songs = this.getActiveSongs();
     this.title.textContent = playlist.name;
     this.subtitle.textContent = `${songs.length} songs · ${playlist.source.replace('_', ' ')}`;
+    this.cover.src = playlist.coverArt || songs[0]?.albumArt || '';
+    this.cover.alt = `${playlist.name} cover`;
+    this.addSongBtn.classList.toggle('hidden', playlist.source !== 'local');
     this.body.innerHTML = '';
 
     songs.forEach((song, index) => {
       const tr = document.createElement('tr');
       if (song.id === this.player.currentSong?.id) tr.classList.add('active');
-
-      const sourceLabel = song.source ?? playlist.source;
+      if (song.isFileAvailable === false) tr.classList.add('song-row--missing');
 
       tr.innerHTML = `
         <td>${index + 1}</td>
+        <td><img class="playlist-row-thumb" src="${song.albumArt}" alt="${song.title} cover" /></td>
         <td>${song.title}</td>
         <td>${song.artist}</td>
-        <td>${formatTime(song.duration)}</td>
-        <td><span class="source-tag source-tag--${sourceLabel}">${sourceLabel.replace('_', ' ')}</span></td>
+        <td>
+          <div class="playlist-row-duration-wrap">
+            <span>${formatTime(song.duration)}</span>
+            <button class="playlist-row-menu" aria-label="Song options">⋯</button>
+            <div class="playlist-row-dropdown hidden">
+              <button class="playlist-row-dropdown__item" data-action="properties">Properties</button>
+              <button class="playlist-row-dropdown__item" data-action="remove">Remove from playlist</button>
+              <button class="playlist-row-dropdown__item" data-action="queue">Add to queue</button>
+            </div>
+          </div>
+        </td>
       `;
 
-      tr.addEventListener('click', () => void this.player.play(song.id));
+      tr.addEventListener('click', () => {
+        if (song.isFileAvailable === false) {
+          this.toast.show('File not found. Re-import the local file to relink it.', 'error');
+          return;
+        }
+        void this.player.play(song.id);
+      });
 
-      if (playlist.source === 'local') {
-        tr.addEventListener('contextmenu', (event) => {
+      const menuButton = tr.querySelector('.playlist-row-menu') as HTMLButtonElement;
+      const dropdown = tr.querySelector('.playlist-row-dropdown') as HTMLElement;
+
+      menuButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.closeAllRowMenus();
+        dropdown.classList.remove('hidden');
+      });
+
+      const optionButtons = Array.from(tr.querySelectorAll('.playlist-row-dropdown__item')) as HTMLButtonElement[];
+      optionButtons.forEach((button) => {
+        button.addEventListener('click', (event) => {
           event.preventDefault();
-          this.editingSongId = song.id;
-          this.contextMenu.style.left = `${event.clientX}px`;
-          this.contextMenu.style.top = `${event.clientY}px`;
-          this.contextMenu.classList.remove('hidden');
+          event.stopPropagation();
+
+          const action = button.dataset['action'];
+          if (action === 'properties') {
+            this.editingSongId = song.id;
+            this.openPropertiesModal(song.id);
+          }
+
+          if (action === 'queue') {
+            this.player.addToPlaybackQueue(song.id);
+            this.toast.show('Song added to queue.', 'success');
+          }
+
+          if (action === 'remove') {
+            const removed = this.playlistService.removeSongFromPlaylist(playlist.id, song.id);
+            if (!removed) return;
+
+            const remainsInQueue = this.playlistService.getAllQueueSongs().some((queuedSong) => queuedSong.id === song.id);
+            if (!remainsInQueue) {
+              this.player.remove(song.id);
+            }
+
+            this.activePlaylist = this.playlistService.getPlaylistById(playlist.id);
+            this.libraryManager.rebuildFromSongs(this.playlistService.getAllQueueSongs());
+            this.toast.show('Song removed from playlist.', 'success');
+            this.render();
+          }
+
+          this.closeAllRowMenus();
         });
-      }
+      });
 
       this.body.appendChild(tr);
+    });
+  }
+
+  private closeAllRowMenus(): void {
+    this.body.querySelectorAll('.playlist-row-dropdown').forEach((menu) => {
+      menu.classList.add('hidden');
     });
   }
 
@@ -183,6 +270,8 @@ export class PlaylistDetailsView {
     this.editingSongId = songId;
     this.pendingCoverDataUrl = null;
     this.propertiesName.textContent = `${song.title} · ${song.artist}`;
+    this.propertiesArtist.value = song.artist || '';
+    this.propertiesAlbum.value = song.album || '';
     this.propertiesLyrics.value = song.lyrics ?? '';
     this.propertiesCoverPreview.src = song.albumArt;
     this.propertiesCoverFile.value = '';
@@ -199,6 +288,8 @@ export class PlaylistDetailsView {
     if (!this.editingSongId) return;
 
     const updates: Partial<ISong> = {
+      artist: this.propertiesArtist.value.trim() || 'Unknown Artist',
+      album: this.propertiesAlbum.value.trim() || 'Singles',
       lyrics: this.propertiesLyrics.value.trim(),
     };
 
@@ -208,6 +299,7 @@ export class PlaylistDetailsView {
 
     this.playlistService.updateSong(this.editingSongId, updates);
     this.player.updateSongMetadata(this.editingSongId, updates);
+    this.libraryManager.rebuildFromSongs(this.player.playlist.toArray());
     this.toast.show('Song properties updated.', 'success');
     this.closePropertiesModal();
   }

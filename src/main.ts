@@ -151,10 +151,8 @@ async function bootstrap(): Promise<void> {
       });
     });
 
-    libraryManager.rebuildFromSongs(playlistService.getAllQueueSongs());
-    artistsLibraryView.render();
+    syncArtistsWithVisibleSongs();
     playlistDetailsView.refreshCurrentPlaylist();
-    renderDashboardArtists();
     toast.show('Album metadata updated.', 'success');
     closeAlbumPropertiesModal();
   });
@@ -162,6 +160,16 @@ async function bootstrap(): Promise<void> {
   const openArtistRoute = (artistName: string): void => {
     navigation.showArtists();
     artistsLibraryView.openArtist(artistName);
+  };
+
+  const syncArtistsWithVisibleSongs = (): void => {
+    const visibleSongs = player.playlist
+      .toArray()
+      .filter((song) => !playlistService.isSongDismissedFromRecentlyPlayed(song.id));
+
+    libraryManager.rebuildFromSongs(visibleSongs);
+    artistsLibraryView.render();
+    renderDashboardArtists();
   };
 
   const renderDashboardArtists = (): void => {
@@ -234,6 +242,7 @@ async function bootstrap(): Promise<void> {
       const removedCount = playlistService.removeAlbumFromQueue(albumName);
       if (removedCount === 0) return;
       syncQueueWithPersisted();
+      syncArtistsWithVisibleSongs();
       playlistDetailsView.refreshCurrentPlaylist();
       toast.show(`Album removed from playback (${removedCount} songs).`, 'success');
     },
@@ -247,6 +256,7 @@ async function bootstrap(): Promise<void> {
     onRemoveSong: (songId) => {
       const removed = playlistService.dismissSongFromRecentlyPlayed(songId);
       if (!removed) return;
+      syncArtistsWithVisibleSongs();
       toast.show('Removed from recently played history.', 'success');
       playlistView.render();
     },
@@ -276,6 +286,7 @@ async function bootstrap(): Promise<void> {
       playlistSidebarView.render();
       playlistDetailsView.refreshCurrentPlaylist();
       syncQueueWithPersisted();
+      syncArtistsWithVisibleSongs();
     },
   );
 
@@ -290,6 +301,7 @@ async function bootstrap(): Promise<void> {
       playlistsView.render();
       playlistDetailsView.refreshCurrentPlaylist();
       syncQueueWithPersisted();
+      syncArtistsWithVisibleSongs();
     },
   );
 

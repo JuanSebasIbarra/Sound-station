@@ -150,7 +150,14 @@ export class YouTubeMusicImporter implements IPlaylistImporter {
   private async _fetchJson<T>(url: string): Promise<T> {
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`YouTube API request failed with status ${response.status}.`);
+      let message = `YouTube API request failed with status ${response.status}.`;
+      try {
+        const body = await response.json() as { message?: string; error?: { message?: string } };
+        message = body.message ?? body.error?.message ?? message;
+      } catch {
+        // keep default status-based message
+      }
+      throw new Error(message);
     }
 
     const payload = (await response.json()) as T & {

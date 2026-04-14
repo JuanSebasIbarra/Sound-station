@@ -84,18 +84,61 @@ function pickThumbnails(renderer: PlaylistVideoRenderer): {
 }
 
 function extractInitialData(html: string): unknown {
-  const patterns = [
-    /ytInitialData\s*=\s*(\{[\s\S]*?\});<\/script>/,
-    /var\s+ytInitialData\s*=\s*(\{[\s\S]*?\});/,
-  ];
+  const anchors = ['ytInitialData =', 'var ytInitialData =', 'window["ytInitialData"] ='];
 
-  for (const pattern of patterns) {
-    const match = pattern.exec(html);
-    if (!match?.[1]) continue;
-    try {
-      return JSON.parse(match[1]);
-    } catch {
-      // keep trying
+  for (const anchor of anchors) {
+    const anchorIndex = html.indexOf(anchor);
+    if (anchorIndex < 0) continue;
+
+    const startIndex = html.indexOf('{', anchorIndex);
+    if (startIndex < 0) continue;
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let index = startIndex; index < html.length; index += 1) {
+      const ch = html[index];
+      if (!ch) continue;
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+
+        if (ch === '\\') {
+          escaped = true;
+          continue;
+        }
+
+        if (ch === '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (ch === '"') {
+        inString = true;
+        continue;
+      }
+
+      if (ch === '{') {
+        depth += 1;
+        continue;
+      }
+
+      if (ch === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          const jsonPayload = html.slice(startIndex, index + 1);
+          try {
+            return JSON.parse(jsonPayload);
+          } catch {
+            break;
+          }
+        }
+      }
     }
   }
 

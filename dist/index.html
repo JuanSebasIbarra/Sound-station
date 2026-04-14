@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-CvuZ3Txq.js"></script>
+    <script type="module" crossorigin src="/assets/index-B9iOI__j.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-VmjbdIYw.css">
   </head>
   <body>
@@ -241,7 +241,7 @@
             <button class="modal__tab" data-service="youtube">YouTube Music</button>
           </div>
           <input id="service-playlist-id" type="text" placeholder="Playlist ID / URL" />
-          <input id="service-api-key" type="password" placeholder="API key (optional)" />
+          <input id="service-api-key" type="hidden" value="" aria-hidden="true" />
           <div class="modal__actions">
             <button id="btn-modal-cancel" class="glossy-btn glossy-btn--small">Cancel</button>
             <button id="btn-modal-import" class="glossy-btn glossy-btn--small">Import Playlist</button>
@@ -276,7 +276,7 @@
             </div>
             <input id="playlist-import-name" type="text" placeholder="Playlist name" />
             <input id="playlist-import-id" type="text" placeholder="Playlist ID / URL" />
-            <input id="playlist-import-api-key" type="password" placeholder="API key (optional)" />
+            <input id="playlist-import-api-key" type="hidden" value="" aria-hidden="true" />
             <button id="btn-create-import-playlist" class="glossy-btn glossy-btn--small">Import and create playlist</button>
           </div>
 
@@ -356,8 +356,18 @@
       <input type="file" id="file-input" multiple accept="audio/*" class="hidden" aria-hidden="true" />
       <input type="file" id="playlist-local-files" multiple accept="audio/*" class="hidden" aria-hidden="true" />
       <input type="file" id="playlist-details-local-files" multiple accept="audio/*" class="hidden" aria-hidden="true" />
+      <div
+        id="youtube-player-container"
+        aria-hidden="true"
+        style="position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; right: 0; bottom: 0;"
+      ></div>
       <div id="toast-container" class="toast-container"></div>
     </div>
 
+    <script>
+      window.onYouTubeIframeAPIReady = function () {
+        window.dispatchEvent(new Event('yt-api-ready'));
+      };
+    </script>
   </body>
 </html>

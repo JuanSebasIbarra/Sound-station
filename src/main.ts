@@ -46,6 +46,9 @@ async function bootstrap(): Promise<void> {
   const libraryManager = LibraryManager.getInstance(storageService);
   const sidebarPanel = document.querySelector('.playlist-sidebar') as HTMLElement;
 
+  await playlistService.initialize();
+  await libraryManager.initialize();
+
   const albumPropertiesOverlay = document.getElementById('album-properties-overlay') as HTMLElement;
   const albumPropertiesCurrent = document.getElementById('album-properties-current') as HTMLElement;
   const albumPropertiesArtist = document.getElementById('album-properties-artist') as HTMLInputElement;

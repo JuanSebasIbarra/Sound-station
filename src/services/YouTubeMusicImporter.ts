@@ -1,179 +1,184 @@
 import type { IPlaylistImporter } from '../interfaces/IPlaylistImporter.js';
 import type { ISong } from '../interfaces/ISong.js';
-import { generateGradientArt, generateId } from '../utils/helpers.js';
+import { generateId } from '../utils/helpers.js';
 
-interface YouTubePlaylistItemsResponse {
-  ok?: boolean;
-  message?: string;
-  items?: YouTubePlaylistItem[];
-  nextPageToken?: string;
-}
-
-interface YouTubePlaylistItem {
-  snippet?: {
-    title?: string;
-    description?: string;
-    publishedAt?: string;
-    videoOwnerChannelTitle?: string;
-    resourceId?: {
-      videoId?: string;
-    };
-    thumbnails?: YouTubeThumbnailSet;
-  };
-  contentDetails?: {
-    videoId?: string;
-    videoPublishedAt?: string;
-  };
-}
-
-interface YouTubeThumbnailSet {
-  default?: YouTubeThumbnail;
-  medium?: YouTubeThumbnail;
-  high?: YouTubeThumbnail;
-  standard?: YouTubeThumbnail;
-  maxres?: YouTubeThumbnail;
-}
-
-interface YouTubeThumbnail {
-  url?: string;
-}
-
-interface YouTubeSongSeed {
-  videoId: string;
+interface InvidiousVideo {
   title: string;
-  artist: string;
-  album: string;
-  description: string;
-  duration: number;
-  albumArt: string;
-  year?: number;
+  videoId: string;
+  author: string;
+  lengthSeconds: number;
+  videoThumbnails: Array<{ quality: string; url: string }>;
 }
 
-const YOUTUBE_PROXY_BASE_URL = '/api/youtube';
-const YOUTUBE_WATCH_URL = 'https://www.youtube.com/watch?v=';
+interface InvidiousPlaylist {
+  title: string;
+  author: string;
+  videos: InvidiousVideo[];
+}
+
+interface PipedStream {
+  title: string;
+  url: string;
+  uploaderName: string;
+  duration: number;
+  thumbnail: string;
+}
+
+interface PipedPlaylist {
+  name: string;
+  thumbnailUrl: string;
+  relatedStreams: PipedStream[];
+  nextpage?: string | null;
+}
+
+const INVIDIOUS_INSTANCES = [
+  'https://inv.nadeko.net',
+  'https://invidious.privacyredirect.com',
+  'https://iv.ggtyler.dev',
+  'https://invidious.perennialte.ch',
+  'https://invidious.darkness.services',
+  'https://yt.drgnz.club',
+];
+
+const PIPED_INSTANCES = [
+  'https://pipedapi.kavin.rocks',
+  'https://piped-api.garudalinux.org',
+  'https://api.piped.privacydev.net',
+  'https://pipedapi.coldify.de',
+];
+
+function parseVideoId(input: string): string | null {
+  if (!input) return null;
+  if (/^[A-Za-z0-9_-]{11}$/.test(input)) return input;
+  const m = input.match(/(?:v=|\byoutu\.be\/|\/watch\?v=)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+export function parsePlaylistId(input: string): string {
+  const m = input.match(/[?&]list=([A-Za-z0-9_-]+)/);
+  return m ? m[1] : input.trim();
+}
+
+function bestInvidiousThumb(thumbs: InvidiousVideo['videoThumbnails']): string {
+  const preferred = ['maxres', 'sddefault', 'high', 'medium', 'default'];
+  for (const q of preferred) {
+    const t = thumbs.find((thumb) => thumb.quality === q);
+    if (t?.url) return t.url;
+  }
+  return thumbs[0]?.url ?? '';
+}
+
+async function fetchWithTimeout(url: string, ms = 7000): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function invidiousVideoToSong(v: InvidiousVideo, playlist: string): ISong {
+  return {
+    id: generateId(),
+    title: v.title,
+    artist: v.author,
+    album: playlist,
+    duration: v.lengthSeconds,
+    albumArt: bestInvidiousThumb(v.videoThumbnails),
+    description: `"${v.title}" by ${v.author} -- YouTube`,
+    source: 'youtube_music',
+    audioUrl: v.videoId,
+  };
+}
+
+function pipedStreamToSong(s: PipedStream, playlist: string): ISong {
+  const videoId = parseVideoId(s.url) ?? s.url;
+  return {
+    id: generateId(),
+    title: s.title,
+    artist: s.uploaderName,
+    album: playlist,
+    duration: s.duration,
+    albumArt: s.thumbnail,
+    description: `"${s.title}" by ${s.uploaderName} -- YouTube`,
+    source: 'youtube_music',
+    audioUrl: videoId,
+  };
+}
+
+async function fetchFromInvidious(playlistId: string): Promise<ISong[]> {
+  for (const base of INVIDIOUS_INSTANCES) {
+    try {
+      const res = await fetchWithTimeout(`${base}/api/v1/playlists/${playlistId}`);
+      if (!res.ok) continue;
+      const data: InvidiousPlaylist = await res.json();
+      if (!data.videos?.length) continue;
+      return data.videos.map((v) => invidiousVideoToSong(v, data.title ?? playlistId));
+    } catch (err) {
+      console.warn(`[YTImporter] Invidious ${base}:`, (err as Error).message);
+    }
+  }
+  throw new Error('All Invidious instances failed');
+}
+
+async function fetchFromPiped(playlistId: string): Promise<ISong[]> {
+  for (const base of PIPED_INSTANCES) {
+    try {
+      const songs: ISong[] = [];
+      const firstRes = await fetchWithTimeout(`${base}/playlists/${playlistId}`);
+      if (!firstRes.ok) continue;
+
+      const firstPage: PipedPlaylist = await firstRes.json();
+      if (firstPage.relatedStreams?.length) {
+        songs.push(...firstPage.relatedStreams.map((s) => pipedStreamToSong(s, firstPage.name ?? playlistId)));
+      }
+
+      let nextpage = firstPage.nextpage ?? null;
+      let guard = 0;
+      while (nextpage && guard < 6) {
+        guard += 1;
+        const pageRes = await fetchWithTimeout(`${base}/nextpage/playlists/${playlistId}?nextpage=${encodeURIComponent(nextpage)}`);
+        if (!pageRes.ok) break;
+
+        const page: PipedPlaylist = await pageRes.json();
+        if (page.relatedStreams?.length) {
+          songs.push(...page.relatedStreams.map((s) => pipedStreamToSong(s, firstPage.name ?? playlistId)));
+        }
+        nextpage = page.nextpage ?? null;
+      }
+
+      if (songs.length) return songs;
+    } catch (err) {
+      console.warn(`[YTImporter] Piped ${base}:`, (err as Error).message);
+    }
+  }
+
+  throw new Error('All Piped instances failed');
+}
 
 export class YouTubeMusicImporter implements IPlaylistImporter {
   readonly name = 'YouTube Music';
 
   async authenticate(_credentials: Record<string, string>): Promise<boolean> {
-    // Intentionally no-op: credentials are handled only on the backend.
     return true;
   }
 
-  async importPlaylist(playlistId: string): Promise<ISong[]> {
-    const normalizedPlaylistId = this._extractPlaylistId(playlistId);
-    if (!normalizedPlaylistId) {
+  async importPlaylist(playlistIdOrUrl: string): Promise<ISong[]> {
+    const playlistId = parsePlaylistId(playlistIdOrUrl);
+    if (!playlistId) {
       throw new Error('A YouTube playlist id is required.');
     }
 
-    const seeds = await this._fetchPlaylistSeeds(normalizedPlaylistId);
-    return seeds.map((seed) => this._toSong(seed));
-  }
-
-  async search(query: string): Promise<ISong[]> {
-    void query;
-    return [];
-  }
-
-  private async _fetchPlaylistSeeds(playlistId: string): Promise<YouTubeSongSeed[]> {
-    const params = new URLSearchParams({ playlistId });
-    const response = await this._fetchJson<YouTubePlaylistItemsResponse>(`${YOUTUBE_PROXY_BASE_URL}/playlist?${params.toString()}`);
-    const playlistTitle = (response as YouTubePlaylistItemsResponse & { playlistTitle?: string }).playlistTitle?.trim() || `YouTube Playlist · ${playlistId}`;
-
-    const seeds: YouTubeSongSeed[] = [];
-    for (const item of response.items ?? []) {
-        const videoId = item.contentDetails?.videoId ?? item.snippet?.resourceId?.videoId;
-        if (!videoId) continue;
-
-        const snippet = item.snippet;
-        const title = snippet?.title?.trim() || 'Untitled video';
-        const artist = snippet?.videoOwnerChannelTitle?.trim() || 'Unknown Artist';
-        const publishedAt = snippet?.publishedAt ?? item.contentDetails?.videoPublishedAt;
-
-        seeds.push({
-          videoId,
-          title,
-          artist,
-          album: playlistTitle,
-          description: snippet?.description?.trim() || `YouTube video: ${title}`,
-          duration: 0,
-          albumArt: this._pickThumbnail(snippet?.thumbnails, `${title}${artist}${playlistId}`),
-          ...(this._parseYear(publishedAt) !== undefined ? { year: this._parseYear(publishedAt) } : {}),
-        });
-    }
-
-    return seeds;
-  }
-
-  private _toSong(seed: YouTubeSongSeed): ISong {
-    return {
-      id: generateId(),
-      title: seed.title,
-      artist: seed.artist,
-      album: seed.album,
-      duration: seed.duration,
-      albumArt: seed.albumArt,
-      description: seed.description,
-      source: 'youtube_music',
-      year: seed.year,
-      audioUrl: `${YOUTUBE_WATCH_URL}${seed.videoId}`,
-    };
-  }
-
-  private _pickThumbnail(thumbnails: YouTubeThumbnailSet | undefined, fallbackSeed: string): string {
-    return thumbnails?.maxres?.url
-      ?? thumbnails?.standard?.url
-      ?? thumbnails?.high?.url
-      ?? thumbnails?.medium?.url
-      ?? thumbnails?.default?.url
-      ?? generateGradientArt(fallbackSeed);
-  }
-
-  private _parseYear(value: string | undefined): number | undefined {
-    if (!value) return undefined;
-    const year = Number.parseInt(value.slice(0, 4), 10);
-    return Number.isFinite(year) ? year : undefined;
-  }
-
-  private _extractPlaylistId(value: string): string {
-    const trimmed = value.trim();
-    if (!trimmed) return '';
-
     try {
-      const url = new URL(trimmed);
-      return url.searchParams.get('list')?.trim() ?? trimmed;
-    } catch {
-      return trimmed;
+      return await fetchFromInvidious(playlistId);
+    } catch (invidiousError) {
+      console.warn('[YTImporter] Invidious failed, trying Piped...', invidiousError);
+      return await fetchFromPiped(playlistId);
     }
   }
 
-  private async _fetchJson<T>(url: string): Promise<T> {
-    const response = await fetch(url);
-    if (!response.ok) {
-      let message = `YouTube API request failed with status ${response.status}.`;
-      try {
-        const body = await response.json() as { message?: string; error?: { message?: string } };
-        message = body.message ?? body.error?.message ?? message;
-      } catch {
-        // keep default status-based message
-      }
-      throw new Error(message);
-    }
-
-    const payload = (await response.json()) as T & {
-      ok?: boolean;
-      message?: string;
-      error?: { message?: string };
-    };
-
-    if (payload.ok === false) {
-      throw new Error(payload.message ?? 'YouTube proxy request failed.');
-    }
-
-    if (payload.error?.message) {
-      throw new Error(payload.error.message);
-    }
-
-    return payload;
+  async search(_query: string): Promise<ISong[]> {
+    return [];
   }
 }

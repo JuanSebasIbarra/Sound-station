@@ -162,14 +162,28 @@ export class PlaylistDetailsView {
 
     songs.forEach((song, index) => {
       const tr = document.createElement('tr');
-      if (song.id === this.player.currentSong?.id) tr.classList.add('active');
+      const isActive = song.id === this.player.currentSong?.id;
+      if (isActive) tr.classList.add('active');
       if (song.isFileAvailable === false) tr.classList.add('song-row--missing');
 
+      const addedDate = this.formatAddedDate(playlist.createdAt);
+      const status = isActive || song.liked ? '✓' : '';
+      const rowLead = isActive ? '▶' : `${index + 1}`;
+
       tr.innerHTML = `
-        <td>${index + 1}</td>
-        <td><img class="playlist-row-thumb" src="${song.albumArt}" alt="${song.title} cover" /></td>
-        <td>${song.title}</td>
-        <td>${song.artist}</td>
+        <td class="playlist-row-rank">${rowLead}</td>
+        <td>
+          <div class="playlist-row-main">
+            <img class="playlist-row-thumb" src="${song.albumArt}" alt="${song.title} cover" />
+            <div class="playlist-row-text">
+              <strong class="playlist-row-title">${song.title}</strong>
+              <small class="playlist-row-meta">Music video • ${song.artist}</small>
+            </div>
+          </div>
+        </td>
+        <td class="playlist-row-album">${song.album || 'Singles'}</td>
+        <td class="playlist-row-added">${addedDate}</td>
+        <td class="playlist-row-status">${status}</td>
         <td>
           <div class="playlist-row-duration-wrap">
             <span>${formatTime(song.duration)}</span>
@@ -240,6 +254,14 @@ export class PlaylistDetailsView {
 
       this.body.appendChild(tr);
     });
+  }
+
+  private formatAddedDate(value: number): string {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(value));
   }
 
   private closeAllRowMenus(): void {

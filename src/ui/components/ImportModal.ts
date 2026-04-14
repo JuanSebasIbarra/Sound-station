@@ -21,7 +21,6 @@ export class ImportModal {
   private readonly cancelBtn:   HTMLElement;
   private readonly importBtn:   HTMLElement;
   private readonly playlistIdEl:HTMLInputElement;
-  private readonly apiKeyEl:    HTMLInputElement;
   private readonly openBtn:     HTMLElement;
   private readonly fileInput:   HTMLInputElement;
 
@@ -43,7 +42,6 @@ export class ImportModal {
     this.cancelBtn    = document.getElementById('btn-modal-cancel')!;
     this.importBtn    = document.getElementById('btn-modal-import')!;
     this.playlistIdEl = document.getElementById('service-playlist-id') as HTMLInputElement;
-    this.apiKeyEl     = document.getElementById('service-api-key')     as HTMLInputElement;
     this.openBtn      = document.getElementById('btn-import-service')!;
     this.fileInput    = document.getElementById('file-input')          as HTMLInputElement;
 
@@ -97,7 +95,6 @@ export class ImportModal {
 
   private async _runImport(): Promise<void> {
     const playlistId = this.playlistIdEl.value.trim() || 'demo';
-    const apiKey     = this.apiKeyEl.value.trim();
 
     const importer = this.importers[this.activeService];
 
@@ -105,7 +102,7 @@ export class ImportModal {
     this.importBtn.setAttribute('disabled', 'true');
 
     try {
-      await importer.authenticate({ apiKey });
+      await importer.authenticate({});
       const songs = await importer.importPlaylist(playlistId);
 
       this.player.addMany(songs);

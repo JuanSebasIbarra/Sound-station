@@ -45,7 +45,6 @@ export class PlaylistSidebarView {
   private readonly importTabs = document.querySelectorAll<HTMLElement>('.playlist-import-tab');
   private readonly importNameInput = document.getElementById('playlist-import-name') as HTMLInputElement;
   private readonly importIdInput = document.getElementById('playlist-import-id') as HTMLInputElement;
-  private readonly importApiKeyInput = document.getElementById('playlist-import-api-key') as HTMLInputElement;
   private readonly createImportBtn = document.getElementById('btn-create-import-playlist') as HTMLButtonElement;
 
   private readonly choiceLocalBtn = document.getElementById('btn-choice-local') as HTMLButtonElement;
@@ -144,7 +143,6 @@ export class PlaylistSidebarView {
     this.createImportBtn.addEventListener('click', async () => {
       const name = this.importNameInput.value.trim();
       const playlistId = this.importIdInput.value.trim() || 'demo';
-      const apiKey = this.importApiKeyInput.value.trim();
 
       if (!name) {
         this.toast.show('Please provide a playlist name.', 'error');
@@ -156,7 +154,7 @@ export class PlaylistSidebarView {
       this.createImportBtn.setAttribute('disabled', 'true');
 
       try {
-        await importer.authenticate({ apiKey });
+        await importer.authenticate({});
         const songs = await importer.importPlaylist(playlistId);
         if (!songs.length) {
           this.toast.show('No songs returned by service.', 'error');
@@ -267,7 +265,6 @@ export class PlaylistSidebarView {
     this.localFilesInput.value = '';
     this.importNameInput.value = '';
     this.importIdInput.value = '';
-    this.importApiKeyInput.value = '';
     this.localCoverDataUrl = '';
     this.localPhotoPreview.src = '';
     this.localPhotoPreview.classList.add('hidden');

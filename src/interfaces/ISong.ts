@@ -34,7 +34,7 @@ export interface ISong {
   /** Release year (optional) */
   year?: number;
 
-  /** Streamable / local audio URL (optional – used by HTMLAudioElement) */
+  /** Stream URL or provider media locator; local/Spotify use HTMLAudioElement, YouTube stores the watch URL here */
   audioUrl?: string;
 
   /** Origin service */

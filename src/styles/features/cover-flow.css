@@ -69,8 +69,8 @@
 .coverflow-stage {
   position: relative;
   width: 100%;
-  max-width: 920px;
-  height: 290px;
+  max-width: 1100px;
+  height: 360px;
   perspective: 1200px;
   perspective-origin: 50% 44%;
   outline: none;
@@ -88,10 +88,10 @@
 /* ── Album tile – shared base ────────────────────────────────── */
 .cf-album {
   position: absolute;
-  width: 195px;
-  height: 195px;
-  left:  calc(50% - 97.5px);
-  top:   calc(50% - 97.5px);
+  width: 250px;
+  height: 250px;
+  left:  calc(50% - 125px);
+  top:   calc(50% - 125px);
   transition:
     transform 0.4s  cubic-bezier(0.23, 1, 0.32, 1),
     opacity   0.35s cubic-bezier(0.23, 1, 0.32, 1),
@@ -192,42 +192,60 @@
 
 /* Left-1 → currentNode.prev */
 .cf-album--left-1 {
-  transform: translate3d(-225px, 0, -90px) rotateY(55deg);
+  transform: translate3d(-280px, 0, -120px) rotateY(55deg);
   z-index: 7;
 }
 
 /* Left-2 → currentNode.prev.prev */
 .cf-album--left-2 {
-  transform: translate3d(-400px, 0, -170px) rotateY(55deg);
+  transform: translate3d(-495px, 0, -210px) rotateY(55deg);
   z-index: 5;
   opacity: 0.72;
 }
 
 /* Left-3 → currentNode.prev.prev.prev */
 .cf-album--left-3 {
-  transform: translate3d(-535px, 0, -240px) rotateY(55deg);
+  transform: translate3d(-670px, 0, -290px) rotateY(55deg);
   z-index: 3;
   opacity: 0.40;
 }
 
 /* Right-1 → currentNode.next */
 .cf-album--right-1 {
-  transform: translate3d(225px, 0, -90px) rotateY(-55deg);
+  transform: translate3d(280px, 0, -120px) rotateY(-55deg);
   z-index: 7;
 }
 
 /* Right-2 → currentNode.next.next */
 .cf-album--right-2 {
-  transform: translate3d(400px, 0, -170px) rotateY(-55deg);
+  transform: translate3d(495px, 0, -210px) rotateY(-55deg);
   z-index: 5;
   opacity: 0.72;
 }
 
 /* Right-3 → currentNode.next.next.next */
 .cf-album--right-3 {
-  transform: translate3d(535px, 0, -240px) rotateY(-55deg);
+  transform: translate3d(670px, 0, -290px) rotateY(-55deg);
   z-index: 3;
   opacity: 0.40;
+}
+
+.coverflow-stage--step-left {
+  animation: cf-stage-step-left 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.coverflow-stage--step-right {
+  animation: cf-stage-step-right 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes cf-stage-step-left {
+  0% { transform: translateX(16px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes cf-stage-step-right {
+  0% { transform: translateX(-16px); }
+  100% { transform: translateX(0); }
 }
 
 /* ── Hover brightness for side albums ───────────────────────── */
@@ -310,21 +328,21 @@
 /* ── Responsive: smaller stage on narrow viewports ──────────── */
 @media (max-width: 720px) {
   .coverflow-stage {
-    height: 230px;
+    height: 270px;
     perspective: 820px;
   }
 
   .cf-album {
-    width: 140px;
-    height: 140px;
-    left:  calc(50% - 70px);
-    top:   calc(50% - 70px);
+    width: 170px;
+    height: 170px;
+    left:  calc(50% - 85px);
+    top:   calc(50% - 85px);
   }
 
-  .cf-album--left-1  { transform: translate3d(-158px, 0, -62px)  rotateY(55deg); }
-  .cf-album--left-2  { transform: translate3d(-282px, 0, -118px) rotateY(55deg); opacity: 0.72; }
-  .cf-album--left-3  { transform: translate3d(-378px, 0, -165px) rotateY(55deg); opacity: 0.40; }
-  .cf-album--right-1 { transform: translate3d(158px,  0, -62px)  rotateY(-55deg); }
-  .cf-album--right-2 { transform: translate3d(282px,  0, -118px) rotateY(-55deg); opacity: 0.72; }
-  .cf-album--right-3 { transform: translate3d(378px,  0, -165px) rotateY(-55deg); opacity: 0.40; }
+  .cf-album--left-1  { transform: translate3d(-188px, 0, -78px)  rotateY(55deg); }
+  .cf-album--left-2  { transform: translate3d(-332px, 0, -136px) rotateY(55deg); opacity: 0.72; }
+  .cf-album--left-3  { transform: translate3d(-444px, 0, -188px) rotateY(55deg); opacity: 0.40; }
+  .cf-album--right-1 { transform: translate3d(188px,  0, -78px)  rotateY(-55deg); }
+  .cf-album--right-2 { transform: translate3d(332px,  0, -136px) rotateY(-55deg); opacity: 0.72; }
+  .cf-album--right-3 { transform: translate3d(444px,  0, -188px) rotateY(-55deg); opacity: 0.40; }
 }

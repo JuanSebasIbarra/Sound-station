@@ -516,22 +516,17 @@
 
 .playlist-details__table th:nth-child(3),
 .playlist-details__table td:nth-child(3) {
-  width: 22%;
+  width: 32%;
 }
 
 .playlist-details__table th:nth-child(4),
 .playlist-details__table td:nth-child(4) {
-  width: 16%;
-}
-
-.playlist-details__table th:nth-child(5),
-.playlist-details__table td:nth-child(5) {
   width: 62px;
   text-align: center;
 }
 
-.playlist-details__table th:nth-child(6),
-.playlist-details__table td:nth-child(6) {
+.playlist-details__table th:nth-child(5),
+.playlist-details__table td:nth-child(5) {
   width: 108px;
 }
 
@@ -574,9 +569,8 @@
 }
 
 .playlist-row-title,
-.playlist-row-meta,
 .playlist-row-album,
-.playlist-row-added {
+.playlist-row-status {
   display: block;
   white-space: nowrap;
   overflow: hidden;
@@ -589,15 +583,14 @@
   color: #212f46;
 }
 
-.playlist-row-meta {
-  margin-top: 3px;
-  font-size: 0.77rem;
-  color: #667793;
+.playlist-row-album {
+  color: #495a74;
 }
 
-.playlist-row-album,
-.playlist-row-added {
-  color: #495a74;
+.playlist-row-album {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .playlist-row-status {

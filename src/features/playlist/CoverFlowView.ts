@@ -24,6 +24,7 @@ import { Player } from '../../core/Player.js';
 export class CoverFlowView {
   private static readonly MAX_SIDES = 3;
   private _swipeStartX = 0;
+  private _animationTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly stage: HTMLElement,
@@ -126,7 +127,17 @@ export class CoverFlowView {
     if (position === 'center') el.setAttribute('aria-selected', 'true');
 
     const img   = document.createElement('img');
-    img.src       = song.albumArt;
+    const enhancedArt = this.enhanceArtworkUrl(song.albumArt);
+    img.src       = enhancedArt;
+    if (enhancedArt !== song.albumArt) {
+      img.dataset['fallbackSrc'] = song.albumArt;
+      img.addEventListener('error', () => {
+        if (img.dataset['fallbackSrc']) {
+          img.src = img.dataset['fallbackSrc'];
+          delete img.dataset['fallbackSrc'];
+        }
+      }, { once: true });
+    }
     img.alt       = `${song.title} album art`;
     img.className = 'cf-album__cover';
     img.draggable = false;
@@ -181,12 +192,12 @@ export class CoverFlowView {
       switch (e.key) {
         case 'ArrowRight':
           e.preventDefault();
-          void this.player.next();
+          this.stepPreview('next');
           break;
 
         case 'ArrowLeft':
           e.preventDefault();
-          void this.player.previous();
+          this.stepPreview('previous');
           break;
 
         case 'Enter':
@@ -216,9 +227,62 @@ export class CoverFlowView {
       const delta = e.clientX - this._swipeStartX;
       if (Math.abs(delta) > 50) {
         delta < 0
-          ? void this.player.next()
-          : void this.player.previous();
+          ? this.stepPreview('next')
+          : this.stepPreview('previous');
       }
     });
+  }
+
+  private stepPreview(direction: 'next' | 'previous'): void {
+    const dll = this.player.playlist;
+    if (dll.isEmpty) return;
+
+    if (!dll.currentNode) {
+      dll.jumpToHead();
+    }
+
+    let moved = direction === 'next' ? dll.getNext() : dll.getPrevious();
+    if (!moved) {
+      const songs = dll.toArray();
+      const edgeId = direction === 'next' ? songs[0]?.id : songs[songs.length - 1]?.id;
+      if (edgeId) {
+        moved = dll.jumpToId(edgeId);
+      }
+    }
+
+    if (!moved) return;
+
+    this.animateStep(direction === 'next' ? 'left' : 'right');
+    this.render();
+  }
+
+  private animateStep(direction: 'left' | 'right'): void {
+    this.stage.classList.remove('coverflow-stage--step-left', 'coverflow-stage--step-right');
+    // Force a reflow so consecutive key presses replay animation.
+    void this.stage.offsetWidth;
+    this.stage.classList.add(direction === 'left' ? 'coverflow-stage--step-left' : 'coverflow-stage--step-right');
+
+    if (this._animationTimer) {
+      clearTimeout(this._animationTimer);
+    }
+
+    this._animationTimer = setTimeout(() => {
+      this.stage.classList.remove('coverflow-stage--step-left', 'coverflow-stage--step-right');
+      this._animationTimer = null;
+    }, 320);
+  }
+
+  private enhanceArtworkUrl(url: string): string {
+    if (!url) return url;
+
+    if (url.includes('ytimg.com')) {
+      return url.replace(/\/(hqdefault|mqdefault|sddefault|default)(\.jpg|\.webp)/, '/maxresdefault$2');
+    }
+
+    if (url.includes('mzstatic.com')) {
+      return url.replace(/\/\d+x\d+bb\./, '/1200x1200bb.');
+    }
+
+    return url;
   }
 }

@@ -1,7 +1,5 @@
 import { Player } from '../../core/Player.js';
 
-import { SpotifyImporter } from '../../services/SpotifyImporter.js';
-import { AppleMusicImporter } from '../../services/AppleMusicImporter.js';
 import { YouTubeMusicImporter } from '../../services/YouTubeMusicImporter.js';
 import { LocalFileImporter } from '../../services/LocalFileImporter.js';
 
@@ -57,8 +55,6 @@ export async function runAppController(): Promise<void> {
   await playlistService.relinkLocalPlaylistsFromM3U();
 
   const importers = {
-    spotify: new SpotifyImporter(),
-    apple: new AppleMusicImporter(),
     youtube: new YouTubeMusicImporter(),
   };
 

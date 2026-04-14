@@ -492,14 +492,42 @@
   border-collapse: collapse;
   background: #fff;
   color: #253247;
+  table-layout: fixed;
 }
 
 .playlist-details__table th,
 .playlist-details__table td {
   text-align: left;
-  padding: 11px 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid #e4eaf2;
   font-size: 0.88rem;
+}
+
+.playlist-details__table th:nth-child(1),
+.playlist-details__table td:nth-child(1) {
+  width: 38px;
+  text-align: center;
+}
+
+.playlist-details__table th:nth-child(2),
+.playlist-details__table td:nth-child(2) {
+  width: 42%;
+}
+
+.playlist-details__table th:nth-child(3),
+.playlist-details__table td:nth-child(3) {
+  width: 32%;
+}
+
+.playlist-details__table th:nth-child(4),
+.playlist-details__table td:nth-child(4) {
+  width: 62px;
+  text-align: center;
+}
+
+.playlist-details__table th:nth-child(5),
+.playlist-details__table td:nth-child(5) {
+  width: 108px;
 }
 
 .playlist-details__table th {
@@ -520,14 +548,65 @@
   background: #e9f3ff;
 }
 
+.playlist-row-rank {
+  font-weight: 700;
+  color: #586a85;
+}
+
+.playlist-details__table tbody tr.active .playlist-row-rank {
+  color: #1e6ec4;
+}
+
+.playlist-row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.playlist-row-text {
+  min-width: 0;
+}
+
+.playlist-row-title,
+.playlist-row-album,
+.playlist-row-status {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playlist-row-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #212f46;
+}
+
+.playlist-row-album {
+  color: #495a74;
+}
+
+.playlist-row-album {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.playlist-row-status {
+  color: #13a14f;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
 .playlist-details__table tbody tr.song-row--missing {
   opacity: 0.65;
   background: rgba(191, 98, 98, 0.12);
 }
 
 .playlist-row-thumb {
-  width: 36px;
-  height: 36px;
+  width: 42px;
+  height: 42px;
   border-radius: 8px;
   border: 1px solid #d0d9e8;
   object-fit: cover;
@@ -553,6 +632,16 @@
   pointer-events: none;
   transition: opacity 140ms ease;
   cursor: pointer;
+}
+
+@media (max-width: 980px) {
+  .playlist-details__table-wrap {
+    overflow-x: auto;
+  }
+
+  .playlist-details__table {
+    min-width: 760px;
+  }
 }
 
 .playlist-details__table tbody tr:hover .playlist-row-menu {

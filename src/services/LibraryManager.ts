@@ -15,9 +15,14 @@ export class LibraryManager {
 
   private readonly artists = new Map<string, Artist>();
   private playbackHistory: string[] = [];
+  private initialized = false;
 
-  private constructor(private readonly storageService: StorageService) {
-    this.load();
+  private constructor(private readonly storageService: StorageService) {}
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    await this.load();
+    this.initialized = true;
   }
 
   recordSongPlay(song: ISong): void {
@@ -78,21 +83,14 @@ export class LibraryManager {
     this.playbackHistory = state.playbackHistory.slice(0, 200);
   }
 
-  private load(): void {
-    const payload = this.storageService.loadAppState();
+  private async load(): Promise<void> {
+    const payload = await this.storageService.loadAppStateAsync();
     if (!payload?.library) return;
     this.syncFromState(payload.library);
   }
 
   private save(): void {
-    const payload = this.storageService.loadAppState();
-    if (!payload) return;
-
-    this.storageService.saveAppState({
-      state: payload.state,
-      library: this.getState(),
-      m3uRegistry: payload.m3uRegistry,
-    });
+    void this.storageService.saveLibraryState(this.getState());
   }
 
   private getOrCreateArtist(artistName: string): Artist {

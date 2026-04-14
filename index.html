@@ -124,9 +124,9 @@
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Thumbnail</th>
                     <th>Title</th>
-                    <th>Artist</th>
+                    <th>Album</th>
+                    <th>Status</th>
                     <th>Duration</th>
                   </tr>
                 </thead>
@@ -234,9 +234,7 @@
         <div class="modal" role="dialog" aria-modal="true" aria-label="Import from service">
           <h3>Import Playlist</h3>
           <div class="modal__tabs">
-            <button class="modal__tab active" data-service="spotify">Spotify</button>
-            <button class="modal__tab" data-service="apple">Apple Music</button>
-            <button class="modal__tab" data-service="youtube">YouTube Music</button>
+            <button class="modal__tab active" data-service="youtube">YouTube Music</button>
           </div>
           <input id="service-playlist-id" type="text" placeholder="Playlist ID / URL" />
           <input id="service-api-key" type="hidden" value="" aria-hidden="true" />
@@ -268,9 +266,7 @@
 
           <div id="playlist-create-import" class="hidden">
             <div class="modal__tabs">
-              <button class="playlist-import-tab active" data-service="spotify">Spotify</button>
-              <button class="playlist-import-tab" data-service="apple">Apple Music</button>
-              <button class="playlist-import-tab" data-service="youtube">YouTube Music</button>
+              <button class="playlist-import-tab active" data-service="youtube">YouTube Music</button>
             </div>
             <input id="playlist-import-name" type="text" placeholder="Playlist name" />
             <input id="playlist-import-id" type="text" placeholder="Playlist ID / URL" />

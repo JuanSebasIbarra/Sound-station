@@ -6,7 +6,7 @@ import { Toast } from '../../components/common/Toast.js';
 import { ModalComponent } from '../../components/common/ModalComponent.js';
 import { generateGradientArt } from '../../utils/helpers.js';
 
-type ServiceKey = 'spotify' | 'apple' | 'youtube';
+type ServiceKey = 'youtube';
 
 const SOURCE_LABEL: Record<UserPlaylistSource, string> = {
   local: '💾 Local Storage',
@@ -21,7 +21,7 @@ const SOURCE_LABEL: Record<UserPlaylistSource, string> = {
  * Sidebar controller for playlist cards (open/delete/create/import).
  */
 export class PlaylistSidebarView {
-  private selectedImportService: ServiceKey = 'spotify';
+  private selectedImportService: ServiceKey = 'youtube';
   private localCoverDataUrl = '';
 
   private readonly listEl = document.getElementById('sidebar-playlists') as HTMLElement;
@@ -136,7 +136,7 @@ export class PlaylistSidebarView {
       tab.addEventListener('click', () => {
         this.importTabs.forEach((item) => item.classList.remove('active'));
         tab.classList.add('active');
-        this.selectedImportService = (tab.dataset['service'] as ServiceKey) ?? 'spotify';
+        this.selectedImportService = 'youtube';
       });
     });
 
@@ -186,6 +186,7 @@ export class PlaylistSidebarView {
   render(): void {
     const playlists = this.playlistService.getPlaylists();
     this.listEl.innerHTML = '';
+    this.applyDynamicSidebarWidth(playlists);
 
     if (playlists.length === 0) {
       const empty = document.createElement('p');
@@ -237,6 +238,20 @@ export class PlaylistSidebarView {
     });
   }
 
+  private applyDynamicSidebarWidth(playlists: IUserPlaylist[]): void {
+    const root = document.documentElement;
+    if (!playlists.length) {
+      root.style.setProperty('--playlist-sidebar-width', '340px');
+      return;
+    }
+
+    const longestName = playlists.reduce((max, playlist) => Math.max(max, playlist.name.trim().length), 0);
+    const estimatedNameWidth = longestName * 8.3;
+    const target = Math.round(estimatedNameWidth + 190);
+    const clamped = Math.max(340, Math.min(560, target));
+    root.style.setProperty('--playlist-sidebar-width', `${clamped}px`);
+  }
+
   private showChoiceStep(): void {
     this.choiceStep.classList.remove('hidden');
     this.localStep.classList.add('hidden');
@@ -280,8 +295,7 @@ export class PlaylistSidebarView {
   }
 
   private mapServiceToSource(service: ServiceKey): UserPlaylistSource {
-    if (service === 'spotify') return 'spotify';
-    if (service === 'apple') return 'apple_music';
+    void service;
     return 'youtube_music';
   }
 }

@@ -1,6 +1,6 @@
 import type { ISong } from '../interfaces/ISong.js';
 import type { IUserPlaylist, UserPlaylistSource } from '../interfaces/IUserPlaylist.js';
-import type { ILibraryState, IM3URegistryEntry } from '../interfaces/ILibraryState.js';
+import type { IM3URegistryEntry } from '../interfaces/ILibraryState.js';
 import { generateId, generateGradientArt } from '../utils/helpers.js';
 import { StorageService } from './StorageService.js';
 import { M3UParser } from './M3UParser.js';
@@ -40,12 +40,17 @@ export class PlaylistService {
   };
 
   private readonly m3uRegistry: Record<string, IM3URegistryEntry> = {};
+  private initialized = false;
 
   constructor(
     private readonly storageService: StorageService = new StorageService(),
     private readonly m3uParser: M3UParser = new M3UParser(),
-  ) {
-    this.load();
+  ) {}
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    await this.load();
+    this.initialized = true;
   }
 
   getPlaylists(): IUserPlaylist[] {
@@ -343,6 +348,8 @@ export class PlaylistService {
   }
 
   async relinkLocalPlaylistsFromM3U(): Promise<void> {
+    await this.initialize();
+
     const localPlaylists = this.state.playlists.filter((playlist) => playlist.source === 'local');
     if (localPlaylists.length === 0) return;
 
@@ -422,8 +429,8 @@ export class PlaylistService {
     };
   }
 
-  private load(): void {
-    const payload = this.storageService.loadAppState<PersistedState>();
+  private async load(): Promise<void> {
+    const payload = await this.storageService.loadAppStateAsync<PersistedState>();
     if (!payload?.state) return;
 
     this.state = {
@@ -439,15 +446,6 @@ export class PlaylistService {
   }
 
   private save(): void {
-    const previousLibrary: ILibraryState = this.storageService.loadAppState()?.library ?? {
-      artists: {},
-      playbackHistory: [],
-    };
-
-    this.storageService.saveAppState<PersistedState>({
-      state: this.state,
-      library: previousLibrary,
-      m3uRegistry: this.m3uRegistry,
-    });
+    void this.storageService.savePlaylistState<PersistedState>(this.state, this.m3uRegistry);
   }
 }

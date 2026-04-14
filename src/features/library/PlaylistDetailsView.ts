@@ -77,16 +77,11 @@ export class PlaylistDetailsView {
 
   private bindEvents(): void {
     this.playBtn.addEventListener('click', () => {
-      const songs = this.getActiveSongs();
-      const first = songs[0];
-      if (first) void this.player.play(first.id);
+      void this.startPlaylistPlayback('ordered');
     });
 
     this.shuffleBtn.addEventListener('click', () => {
-      const songs = this.getActiveSongs();
-      if (!songs.length) return;
-      const randomSong = songs[Math.floor(Math.random() * songs.length)];
-      void this.player.play(randomSong.id);
+      void this.startPlaylistPlayback('shuffle');
     });
 
     this.addSongBtn.addEventListener('click', () => {
@@ -148,6 +143,28 @@ export class PlaylistDetailsView {
     });
   }
 
+  private async startPlaylistPlayback(mode: 'ordered' | 'shuffle'): Promise<void> {
+    const songs = this.getActiveSongs().filter((song) => song.isFileAvailable !== false);
+    if (!songs.length) return;
+
+    const queue = mode === 'shuffle' ? this.shuffleSongs(songs) : songs;
+    this.player.clearPlaybackQueue();
+    queue.forEach((song) => {
+      this.player.addToPlaybackQueue(song.id);
+    });
+
+    await this.player.play(queue[0]?.id);
+  }
+
+  private shuffleSongs(songs: ISong[]): ISong[] {
+    const copy = songs.slice();
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
   private render(): void {
     const playlist = this.activePlaylist;
     if (!playlist) return;
@@ -162,14 +179,25 @@ export class PlaylistDetailsView {
 
     songs.forEach((song, index) => {
       const tr = document.createElement('tr');
-      if (song.id === this.player.currentSong?.id) tr.classList.add('active');
+      const isActive = song.id === this.player.currentSong?.id;
+      if (isActive) tr.classList.add('active');
       if (song.isFileAvailable === false) tr.classList.add('song-row--missing');
 
+      const status = isActive || song.liked ? '✓' : '';
+      const rowLead = isActive ? '▶' : `${index + 1}`;
+
       tr.innerHTML = `
-        <td>${index + 1}</td>
-        <td><img class="playlist-row-thumb" src="${song.albumArt}" alt="${song.title} cover" /></td>
-        <td>${song.title}</td>
-        <td>${song.artist}</td>
+        <td class="playlist-row-rank">${rowLead}</td>
+        <td>
+          <div class="playlist-row-main">
+            <img class="playlist-row-thumb" src="${song.albumArt}" alt="${song.title} cover" />
+            <div class="playlist-row-text">
+              <strong class="playlist-row-title">${song.title}</strong>
+            </div>
+          </div>
+        </td>
+        <td class="playlist-row-album">${song.album || 'Singles'}</td>
+        <td class="playlist-row-status">${status}</td>
         <td>
           <div class="playlist-row-duration-wrap">
             <span>${formatTime(song.duration)}</span>

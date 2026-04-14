@@ -77,16 +77,11 @@ export class PlaylistDetailsView {
 
   private bindEvents(): void {
     this.playBtn.addEventListener('click', () => {
-      const songs = this.getActiveSongs();
-      const first = songs[0];
-      if (first) void this.player.play(first.id);
+      void this.startPlaylistPlayback('ordered');
     });
 
     this.shuffleBtn.addEventListener('click', () => {
-      const songs = this.getActiveSongs();
-      if (!songs.length) return;
-      const randomSong = songs[Math.floor(Math.random() * songs.length)];
-      void this.player.play(randomSong.id);
+      void this.startPlaylistPlayback('shuffle');
     });
 
     this.addSongBtn.addEventListener('click', () => {
@@ -146,6 +141,28 @@ export class PlaylistDetailsView {
     this.player.events.on('play', () => {
       if (this.activePlaylist) this.highlightCurrentSong();
     });
+  }
+
+  private async startPlaylistPlayback(mode: 'ordered' | 'shuffle'): Promise<void> {
+    const songs = this.getActiveSongs().filter((song) => song.isFileAvailable !== false);
+    if (!songs.length) return;
+
+    const queue = mode === 'shuffle' ? this.shuffleSongs(songs) : songs;
+    this.player.clearPlaybackQueue();
+    queue.forEach((song) => {
+      this.player.addToPlaybackQueue(song.id);
+    });
+
+    await this.player.play(queue[0]?.id);
+  }
+
+  private shuffleSongs(songs: ISong[]): ISong[] {
+    const copy = songs.slice();
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
   }
 
   private render(): void {

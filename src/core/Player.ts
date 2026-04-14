@@ -2,6 +2,7 @@ import type { ISong } from '../interfaces/ISong.js';
 import type { RepeatMode } from '../interfaces/IEventEmitter.js';
 import { DoublyLinkedList } from './DoublyLinkedList.js';
 import { EventEmitter } from '../utils/EventEmitter.js';
+import { YouTubeAudioService } from '../services/YouTubeAudioService.js';
 
 export class Player {
   private static instance: Player | null = null;
@@ -15,6 +16,7 @@ export class Player {
 
   private readonly _playlist: DoublyLinkedList;
   private readonly _audio: HTMLAudioElement;
+  private readonly _youtubeAudioService: YouTubeAudioService;
   public readonly events: EventEmitter;
 
   private _youtubePlayer: YT.Player | null = null;
@@ -22,6 +24,7 @@ export class Player {
   private _timeUpdateIntervalId: number | null = null;
   private _ytReady = false;
   private _youtubeScriptRequested = false;
+  private _youtubePlaybackMode: 'iframe' | 'direct' | null = null;
   private _isPlaying = false;
   private _volume = 0.8;
   private _isMuted = false;
@@ -34,6 +37,7 @@ export class Player {
   private constructor() {
     this._playlist = new DoublyLinkedList();
     this._audio = new Audio();
+    this._youtubeAudioService = YouTubeAudioService.getInstance();
     this.events = new EventEmitter();
 
     this._audio.volume = this._volume;
@@ -49,12 +53,12 @@ export class Player {
   get repeatMode(): RepeatMode { return this._repeatMode; }
   get currentSong(): ISong | null { return this._playlist.currentSong; }
   get currentTime(): number {
-    return this._isCurrentSongYouTube()
+    return this._isUsingYouTubeIframe()
       ? this._youtubePlayer?.getCurrentTime() ?? 0
       : this._audio.currentTime;
   }
   get duration(): number {
-    return this._isCurrentSongYouTube()
+    return this._isUsingYouTubeIframe()
       ? this._youtubePlayer?.getDuration() ?? 0
       : this._audio.duration || 0;
   }
@@ -203,6 +207,8 @@ export class Player {
       return;
     }
 
+    this._youtubePlaybackMode = null;
+
     if (song.isFileAvailable === false || !song.audioUrl) {
       this._isPlaying = false;
       this.events.emit('playback-error', {
@@ -231,7 +237,7 @@ export class Player {
   pause(): void {
     if (!this._isPlaying) return;
 
-    if (this._isCurrentSongYouTube()) {
+    if (this._isUsingYouTubeIframe()) {
       this._youtubePlayer?.pauseVideo();
     } else {
       this._audio.pause();
@@ -343,7 +349,7 @@ export class Player {
   seek(seconds: number): void {
     if (!Number.isFinite(seconds)) return;
 
-    if (this._isCurrentSongYouTube()) {
+    if (this._isUsingYouTubeIframe()) {
       this._youtubePlayer?.seekTo(Math.max(0, seconds), true);
     } else {
       this._audio.currentTime = seconds;
@@ -361,14 +367,22 @@ export class Player {
   setVolume(level: number): void {
     this._volume = Math.max(0, Math.min(1, level));
     this._audio.volume = this._isMuted ? 0 : this._volume;
-    this._youtubePlayer?.setVolume(Math.round((this._isMuted ? 0 : this._volume) * 100));
+
+    if (this._isUsingYouTubeIframe()) {
+      this._youtubePlayer?.setVolume(Math.round((this._isMuted ? 0 : this._volume) * 100));
+    }
+
     this.events.emit('volume', { level: this._isMuted ? 0 : this._volume });
   }
 
   toggleMute(): void {
     this._isMuted = !this._isMuted;
     this._audio.volume = this._isMuted ? 0 : this._volume;
-    this._youtubePlayer?.setVolume(Math.round((this._isMuted ? 0 : this._volume) * 100));
+
+    if (this._isUsingYouTubeIframe()) {
+      this._youtubePlayer?.setVolume(Math.round((this._isMuted ? 0 : this._volume) * 100));
+    }
+
     this.events.emit('volume', { level: this._isMuted ? 0 : this._volume });
   }
 
@@ -422,6 +436,8 @@ export class Player {
       return;
     }
 
+    this._youtubePlaybackMode = null;
+
     if (song.isFileAvailable === false || !song.audioUrl) {
       this._isPlaying = false;
       this.events.emit('playback-error', {
@@ -460,7 +476,7 @@ export class Player {
 
   private _bindAudioEvents(): void {
     this._audio.addEventListener('timeupdate', () => {
-      if (this._isCurrentSongYouTube()) return;
+      if (this._isUsingYouTubeIframe()) return;
 
       this.events.emit('time-update', {
         current: this._audio.currentTime,
@@ -469,7 +485,7 @@ export class Player {
     });
 
     this._audio.addEventListener('ended', () => {
-      if (this._isCurrentSongYouTube()) return;
+      if (this._isUsingYouTubeIframe()) return;
 
       if (this._repeatMode === 'one') {
         this._audio.currentTime = 0;
@@ -481,7 +497,15 @@ export class Player {
     });
 
     this._audio.addEventListener('error', () => {
-      if (this._isCurrentSongYouTube()) return;
+      if (this._youtubePlaybackMode === 'direct' && this.currentSong?.source === 'youtube_music') {
+        const song = this.currentSong;
+        if (song) {
+          void this._playYouTubeIframeFallback(song);
+        }
+        return;
+      }
+
+      if (this._isUsingYouTubeIframe()) return;
       console.warn('[Player] Audio error – skipping to next');
       void this.next();
     });
@@ -512,7 +536,46 @@ export class Player {
       return;
     }
 
+    this._youtubeAudioService.cancelPendingRequests();
     this._stopNativeAudio();
+
+    const directAudioUrl = await this._youtubeAudioService.getDirectAudioUrl(videoId);
+    if (this._playlist.currentSong?.id !== song.id) {
+      return;
+    }
+
+    if (directAudioUrl) {
+      this._stopYouTubePlayback();
+      this._youtubePlaybackMode = 'direct';
+      this._loadSong({ ...song, audioUrl: directAudioUrl });
+      this._audio.volume = this._isMuted ? 0 : this._volume;
+
+      try {
+        await this._audio.play();
+        this._isPlaying = true;
+        this.events.emit('play', { songId: song.id });
+        return;
+      } catch {
+        // Fall through to iframe playback
+      }
+    }
+
+    await this._playYouTubeIframeFallback(song);
+  }
+
+  private async _playYouTubeIframeFallback(song: ISong): Promise<void> {
+    const videoId = this._extractYouTubeVideoId(song.audioUrl);
+    if (!videoId) {
+      this._isPlaying = false;
+      this.events.emit('playback-error', {
+        songId: song.id,
+        reason: 'unknown',
+      });
+      return;
+    }
+
+    this._stopNativeAudio();
+    this._youtubePlaybackMode = 'iframe';
     await this._ensureYouTubePlayer(videoId);
 
     if (!this._youtubePlayer) {
@@ -558,6 +621,8 @@ export class Player {
   }
 
   private _handleYouTubeStateChange(state: number): void {
+    if (!this._isUsingYouTubeIframe()) return;
+
     const songId = this._playlist.currentSong?.id ?? '';
 
     if (state === YT.PlayerState.PLAYING) {
@@ -590,7 +655,7 @@ export class Player {
   private _startYouTubeProgressPolling(): void {
     this._stopYouTubeProgressPolling();
     this._timeUpdateIntervalId = window.setInterval(() => {
-      if (!this._isCurrentSongYouTube() || !this._youtubePlayer) return;
+      if (!this._isUsingYouTubeIframe() || !this._youtubePlayer) return;
       this.events.emit('time-update', {
         current: this._youtubePlayer.getCurrentTime(),
         total: this._youtubePlayer.getDuration(),
@@ -672,18 +737,29 @@ export class Player {
     return this._playlist.currentSong?.source === 'youtube_music';
   }
 
+  private _isUsingYouTubeIframe(): boolean {
+    return this._isCurrentSongYouTube() && this._youtubePlaybackMode === 'iframe';
+  }
+
   private _stopNativeAudio(): void {
     this._audio.pause();
     this._audio.removeAttribute('src');
     this._audio.load();
+    if (this._youtubePlaybackMode === 'direct') {
+      this._youtubePlaybackMode = null;
+    }
   }
 
   private _stopYouTubePlayback(): void {
     this._youtubePlayer?.pauseVideo();
     this._stopYouTubeProgressPolling();
+    if (this._youtubePlaybackMode === 'iframe') {
+      this._youtubePlaybackMode = null;
+    }
   }
 
   private _stopCurrentPlayback(): void {
+    this._youtubeAudioService.cancelPendingRequests();
     this._stopNativeAudio();
     this._stopYouTubePlayback();
     this._isPlaying = false;

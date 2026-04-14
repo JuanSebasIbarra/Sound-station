@@ -1,6 +1,7 @@
 import type { IPlaylistImporter } from '../interfaces/IPlaylistImporter.js';
 import type { ISong } from '../interfaces/ISong.js';
 import { generateId } from '../utils/helpers.js';
+import { INVIDIOUS_INSTANCES, PIPED_INSTANCES } from '../config/youtube-instances.js';
 
 interface InvidiousVideo {
   title: string;
@@ -30,22 +31,6 @@ interface PipedPlaylist {
   relatedStreams: PipedStream[];
   nextpage?: string | null;
 }
-
-const INVIDIOUS_INSTANCES = [
-  'https://inv.nadeko.net',
-  'https://invidious.privacyredirect.com',
-  'https://iv.ggtyler.dev',
-  'https://invidious.perennialte.ch',
-  'https://invidious.darkness.services',
-  'https://yt.drgnz.club',
-];
-
-const PIPED_INSTANCES = [
-  'https://pipedapi.kavin.rocks',
-  'https://piped-api.garudalinux.org',
-  'https://api.piped.privacydev.net',
-  'https://pipedapi.coldify.de',
-];
 
 function parseVideoId(input: string): string | null {
   if (!input) return null;
@@ -88,7 +73,7 @@ function invidiousVideoToSong(v: InvidiousVideo, playlist: string): ISong {
     albumArt: bestInvidiousThumb(v.videoThumbnails),
     description: `"${v.title}" by ${v.author} -- YouTube`,
     source: 'youtube_music',
-    audioUrl: v.videoId,
+    audioUrl: `https://www.youtube.com/watch?v=${v.videoId}`,
   };
 }
 
@@ -103,7 +88,7 @@ function pipedStreamToSong(s: PipedStream, playlist: string): ISong {
     albumArt: s.thumbnail,
     description: `"${s.title}" by ${s.uploaderName} -- YouTube`,
     source: 'youtube_music',
-    audioUrl: videoId,
+    audioUrl: `https://www.youtube.com/watch?v=${videoId}`,
   };
 }
 

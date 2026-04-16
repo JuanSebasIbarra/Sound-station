@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="300" viewBox="0 0 900 300" role="img" aria-label="YouTube Music logo Music variant">
+  <defs>
+    <radialGradient id="ytm-red" cx="34%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#ff8f92" />
+      <stop offset="45%" stop-color="#ff2f39" />
+      <stop offset="78%" stop-color="#ff0000" />
+    </radialGradient>
+  </defs>
+
+  <circle cx="140" cy="150" r="120" fill="url(#ytm-red)" />
+  <circle cx="140" cy="150" r="72" fill="none" stroke="#ffffff" stroke-width="9" />
+  <polygon points="118,106 188,150 118,194" fill="#ffffff" />
+
+  <text
+    x="300"
+    y="205"
+    fill="#111111"
+    font-family="Inter, Segoe UI, Arial, sans-serif"
+    font-size="190"
+    font-weight="800"
+    letter-spacing="-2"
+  >Music</text>
+</svg>

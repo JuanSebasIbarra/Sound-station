@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "A modern music player powered by a Doubly Linked List playlist engine",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

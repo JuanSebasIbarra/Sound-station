@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="/assets/index-BJvZnvQc.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Ddf5KqlM.css">
+    <script type="module" crossorigin src="/assets/index-DJEJImfA.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-3U2_cYfM.css">
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -22,6 +22,7 @@
           <input id="header-search" type="search" placeholder="Search songs, albums, artists or playlists" />
         </div>
         <div class="chrome-header__actions">
+          <button id="btn-open-style-modal" class="glossy-btn glossy-btn--small">Estilos</button>
           <button id="btn-cover-flow" class="glossy-btn glossy-btn--small">🎵 Vista Previa</button>
           <button id="btn-import-service" class="glossy-btn glossy-btn--small">Import Service Playlist</button>
           <button id="btn-import-local" class="glossy-btn glossy-btn--small">Import Local Files</button>
@@ -322,6 +323,26 @@
           <div class="modal__actions">
             <button id="confirm-modal-cancel" class="glossy-btn glossy-btn--small">Cancel</button>
             <button id="confirm-modal-confirm" class="glossy-btn glossy-btn--small">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay hidden style-theme-modal-overlay" id="style-theme-modal-overlay">
+        <div class="modal style-theme-modal" role="dialog" aria-modal="true" aria-label="Seleccionar estilo visual">
+          <div class="style-theme-modal__header">
+            <h3>Seleccionar estilo visual</h3>
+            <button id="btn-style-theme-close" class="style-theme-modal__close" aria-label="Cerrar selector de estilos">✕</button>
+          </div>
+          <p class="style-theme-modal__subtitle">Cambia la apariencia sin afectar el funcionamiento actual.</p>
+          <div class="style-theme-modal__options" role="radiogroup" aria-label="Opciones de estilo visual">
+            <button class="style-theme-option" data-ui-style="skeuomorphism" role="radio" aria-checked="false">
+              <span class="style-theme-option__title">Skeuomorphism</span>
+              <span class="style-theme-option__desc">Sombras, relieves y textura con aspecto tangible.</span>
+            </button>
+            <button class="style-theme-option" data-ui-style="liquid-glass" role="radio" aria-checked="false">
+              <span class="style-theme-option__title">Liquid Glass</span>
+              <span class="style-theme-option__desc">Superficies translucidas, blur suave y profundidad fluida.</span>
+            </button>
           </div>
         </div>
       </div>

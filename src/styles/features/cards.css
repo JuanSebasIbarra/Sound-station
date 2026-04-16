@@ -516,17 +516,11 @@
 
 .playlist-details__table th:nth-child(3),
 .playlist-details__table td:nth-child(3) {
-  width: 32%;
+  width: 34%;
 }
 
 .playlist-details__table th:nth-child(4),
 .playlist-details__table td:nth-child(4) {
-  width: 62px;
-  text-align: center;
-}
-
-.playlist-details__table th:nth-child(5),
-.playlist-details__table td:nth-child(5) {
   width: 108px;
 }
 
@@ -569,8 +563,7 @@
 }
 
 .playlist-row-title,
-.playlist-row-album,
-.playlist-row-status {
+.playlist-row-album {
   display: block;
   white-space: nowrap;
   overflow: hidden;
@@ -591,12 +584,6 @@
   white-space: nowrap;
   overflow: visible;
   text-overflow: clip;
-}
-
-.playlist-row-status {
-  color: #13a14f;
-  font-weight: 800;
-  font-size: 0.9rem;
 }
 
 .playlist-details__table tbody tr.song-row--missing {

@@ -183,7 +183,6 @@ export class PlaylistDetailsView {
       if (isActive) tr.classList.add('active');
       if (song.isFileAvailable === false) tr.classList.add('song-row--missing');
 
-      const status = isActive || song.liked ? '✓' : '';
       const rowLead = isActive ? '▶' : `${index + 1}`;
 
       tr.innerHTML = `
@@ -197,7 +196,6 @@ export class PlaylistDetailsView {
           </div>
         </td>
         <td class="playlist-row-album">${song.album || 'Singles'}</td>
-        <td class="playlist-row-status">${status}</td>
         <td>
           <div class="playlist-row-duration-wrap">
             <span>${formatTime(song.duration)}</span>

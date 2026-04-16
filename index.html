@@ -20,6 +20,7 @@
           <input id="header-search" type="search" placeholder="Search songs, albums, artists or playlists" />
         </div>
         <div class="chrome-header__actions">
+          <button id="btn-open-style-modal" class="glossy-btn glossy-btn--small">Estilos</button>
           <button id="btn-cover-flow" class="glossy-btn glossy-btn--small">🎵 Vista Previa</button>
           <button id="btn-import-service" class="glossy-btn glossy-btn--small">Import Service Playlist</button>
           <button id="btn-import-local" class="glossy-btn glossy-btn--small">Import Local Files</button>
@@ -126,7 +127,6 @@
                     <th>#</th>
                     <th>Title</th>
                     <th>Album</th>
-                    <th>Status</th>
                     <th>Duration</th>
                   </tr>
                 </thead>
@@ -321,6 +321,26 @@
           <div class="modal__actions">
             <button id="confirm-modal-cancel" class="glossy-btn glossy-btn--small">Cancel</button>
             <button id="confirm-modal-confirm" class="glossy-btn glossy-btn--small">Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-overlay hidden style-theme-modal-overlay" id="style-theme-modal-overlay">
+        <div class="modal style-theme-modal" role="dialog" aria-modal="true" aria-label="Seleccionar estilo visual">
+          <div class="style-theme-modal__header">
+            <h3>Seleccionar estilo visual</h3>
+            <button id="btn-style-theme-close" class="style-theme-modal__close" aria-label="Cerrar selector de estilos">✕</button>
+          </div>
+          <p class="style-theme-modal__subtitle">Cambia la apariencia sin afectar el funcionamiento actual.</p>
+          <div class="style-theme-modal__options" role="radiogroup" aria-label="Opciones de estilo visual">
+            <button class="style-theme-option" data-ui-style="skeuomorphism" role="radio" aria-checked="false">
+              <span class="style-theme-option__title">Skeuomorphism</span>
+              <span class="style-theme-option__desc">Sombras, relieves y textura con aspecto tangible.</span>
+            </button>
+            <button class="style-theme-option" data-ui-style="liquid-glass" role="radio" aria-checked="false">
+              <span class="style-theme-option__title">Liquid Glass</span>
+              <span class="style-theme-option__desc">Superficies translucidas, blur suave y profundidad fluida.</span>
+            </button>
           </div>
         </div>
       </div>

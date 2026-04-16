@@ -36,12 +36,19 @@ body.focus-mode-open .chrome-header {
 }
 
 .player-bar__meta img {
-  width: 60px;
-  height: 60px;
-  border-radius: 9px;
+  width: 76px;
+  height: 76px;
+  border-radius: 11px;
   border: 1px solid #808da3;
   object-fit: cover;
   background: #d4dde9;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.player-bar__meta img:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.22);
 }
 
 .player-bar__meta strong,
@@ -233,8 +240,8 @@ body.focus-mode-open .chrome-header {
 
 .song-focus-overlay__close {
   position: absolute;
-  top: -12px;
-  right: -12px;
+  top: 10px;
+  right: 10px;
   width: 38px;
   height: 38px;
   border-radius: 999px;
@@ -245,6 +252,7 @@ body.focus-mode-open .chrome-header {
   font-weight: 700;
   cursor: pointer;
   box-shadow: inset 0 1px 0 #fff, 0 6px 14px rgba(0, 0, 0, 0.42);
+  z-index: 2;
 }
 
 .song-focus-overlay__close:hover {
@@ -256,6 +264,8 @@ body.focus-mode-open .chrome-header {
   border-radius: 16px;
   border: 1px solid #79839b;
   box-shadow: 0 16px 30px rgba(0, 0, 0, 0.4);
+  transform-origin: left bottom;
+  animation: focus-cover-grow 0.42s cubic-bezier(0.2, 0.9, 0.2, 1) both;
 }
 
 .song-focus-overlay__lyrics-wrap {
@@ -266,6 +276,9 @@ body.focus-mode-open .chrome-header {
   padding: 14px;
   max-height: min(76vh, 760px);
   overflow: auto;
+  opacity: 0;
+  transform: translateY(16px);
+  animation: focus-panel-in 0.28s ease-out 0.3s forwards;
 }
 
 .song-focus-overlay__queue-wrap {
@@ -276,6 +289,15 @@ body.focus-mode-open .chrome-header {
   padding: 14px;
   max-height: min(76vh, 760px);
   overflow: auto;
+  opacity: 0;
+  transform: translateY(16px);
+  animation: focus-panel-in 0.28s ease-out 0.36s forwards;
+}
+
+.song-focus-overlay__close {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.94);
+  animation: focus-close-in 0.24s ease-out 0.34s forwards;
 }
 
 .song-focus-overlay__queue-wrap .section-heading {
@@ -312,6 +334,46 @@ body.focus-mode-open .chrome-header {
   font-family: Inter, system-ui, sans-serif;
   line-height: 1.6;
   color: #dce6f7;
+}
+
+@keyframes focus-cover-grow {
+  0% {
+    opacity: 0.25;
+    transform: scale(0.55);
+    filter: blur(2px);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.04);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes focus-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes focus-close-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .modal__actions { display: flex; justify-content: flex-end; gap: 8px; }
